@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTrendKeywords, collectTrends } from '@/app/lib/ddgs';
+import { getTrendKeywords, collectTrends, getLastTrendError } from '@/app/lib/ddgs';
 
 export async function GET(request: NextRequest) {
   console.log('📡 Trends API 호출됨');
@@ -25,25 +25,23 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      trends: trends.slice(0, 12), // 최대 12개만 반환
+      trends: trends.slice(0, 12),
       count: trends.length,
       lastUpdated: new Date().toISOString(),
     });
 
   } catch (error) {
     console.error('💥 Trends API 오류:', error);
-    console.error('오류 상세:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('오류 상세:', errorMessage);
     
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to fetch trends',
-        errorDetails: error.message,
-        trends: [], // 빈 배열 반환으로 프론트엔드에서 목업 데이터 사용
+        error: '트렌드 수집에 실패했습니다. 검색 API 연결을 확인해주세요.',
+        errorDetails: errorMessage,
+        trends: [], // 빈 배열로 실패 표시
       },
       { status: 500 }
     );
@@ -68,17 +66,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('💥 POST - 트렌드 업데이트 오류:', error);
-    console.error('오류 상세:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to update trends',
-        errorDetails: error.message,
+        error: '트렌드 수집에 실패했습니다. 검색 API 연결을 확인해주세요.',
+        errorDetails: errorMessage,
       },
       { status: 500 }
     );

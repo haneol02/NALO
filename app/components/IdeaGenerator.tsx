@@ -4,68 +4,104 @@ import { useState } from 'react';
 import { CATEGORIES } from '@/types';
 
 interface IdeaGeneratorProps {
-  onGenerate: (categories: string[], customInput: string) => void;
+  onSearch: (keywords: string[]) => void;
   isLoading: boolean;
-  selectedCategories?: string[];
-  customInput?: string;
+  selectedKeywords?: string[];
 }
 
-export default function IdeaGenerator({ onGenerate, isLoading, selectedCategories: propSelectedCategories = [], customInput: propCustomInput = '' }: IdeaGeneratorProps) {
-  // 이전 검색 기록의 영향을 받지 않도록 항상 빈 상태로 시작
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [customInput, setCustomInput] = useState('');
+export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: propSelectedKeywords = [] }: IdeaGeneratorProps) {
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(propSelectedKeywords);
+  const [inputValue, setInputValue] = useState('');
 
-  const handleCategoryToggle = (category: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(category) 
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
-    );
+  const handleCategoryClick = (category: string) => {
+    if (!selectedKeywords.includes(category)) {
+      setSelectedKeywords(prev => [...prev, category]);
+    }
+  };
+
+  const handleKeywordRemove = (keyword: string) => {
+    setSelectedKeywords(prev => prev.filter(k => k !== keyword));
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && inputValue.trim()) {
+      e.preventDefault();
+      const newKeyword = inputValue.trim();
+      if (!selectedKeywords.includes(newKeyword)) {
+        setSelectedKeywords(prev => [...prev, newKeyword]);
+      }
+      setInputValue('');
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (selectedCategories.length === 0 && !customInput.trim()) {
-      alert('관심 분야를 선택하거나 직접 입력해주세요.');
+    if (selectedKeywords.length === 0) {
+      alert('최소 하나의 키워드를 선택하거나 입력해주세요.');
       return;
     }
 
-    onGenerate(selectedCategories, customInput.trim());
+    onSearch(selectedKeywords);
   };
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="card">
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* 카테고리 선택 */}
+          {/* 선택된 키워드 */}
+          {selectedKeywords.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                선택된 키워드
+              </h3>
+              <div className="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-lg border border-slate-200 min-h-[60px]">
+                {selectedKeywords.map((keyword, index) => (
+                  <span 
+                    key={index}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-800 rounded-lg font-medium"
+                  >
+                    {keyword}
+                    <button
+                      type="button"
+                      onClick={() => handleKeywordRemove(keyword)}
+                      className="hover:bg-blue-200 rounded-full p-1 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 분야 선택 */}
           <div>
             <h3 className="text-lg font-semibold text-slate-800 mb-4">
-              관심있는 분야를 선택하세요 <span className="text-sm text-slate-500">(복수 선택 가능)</span>
+              대표 분야 선택 <span className="text-sm text-slate-500">(클릭하면 키워드에 추가)</span>
             </h3>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {CATEGORIES.map((category) => (
-                <label 
+                <button
                   key={category}
+                  type="button"
+                  onClick={() => handleCategoryClick(category)}
                   className={`
                     flex items-center justify-center p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
-                    ${selectedCategories.includes(category) 
-                      ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                      : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                    ${selectedKeywords.includes(category) 
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 opacity-60 cursor-default' 
+                      : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700'
                     }
                   `}
+                  disabled={selectedKeywords.includes(category)}
                 >
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={selectedCategories.includes(category)}
-                    onChange={() => handleCategoryToggle(category)}
-                  />
                   <span className="font-medium text-sm md:text-base">
                     {category}
                   </span>
-                </label>
+                </button>
               ))}
             </div>
           </div>
@@ -73,18 +109,19 @@ export default function IdeaGenerator({ onGenerate, isLoading, selectedCategorie
           {/* 직접 입력 */}
           <div>
             <label htmlFor="customInput" className="block text-lg font-semibold text-slate-800 mb-4">
-              또는 직접 입력:
+              직접 키워드 입력:
             </label>
             <input
               type="text"
               id="customInput"
-              placeholder="예: 사이드프로젝트, 창업 아이디어, 앱 개발"
+              placeholder="키워드 입력 후 Enter 키를 눌러주세요"
               className="input-field"
-              value={customInput}
-              onChange={(e) => setCustomInput(e.target.value)}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleInputKeyDown}
             />
             <p className="text-sm text-slate-500 mt-2">
-              구체적으로 입력할수록 더 정확한 아이디어를 받을 수 있습니다
+              예: AI, 채팅봇, 사이드프로젝트, 창업 등 (개별 입력 후 Enter)
             </p>
           </div>
 
@@ -92,10 +129,10 @@ export default function IdeaGenerator({ onGenerate, isLoading, selectedCategorie
           <div className="text-center">
             <button
               type="submit"
-              disabled={isLoading || (selectedCategories.length === 0 && !customInput.trim())}
+              disabled={isLoading || selectedKeywords.length === 0}
               className={`
                 btn-primary text-lg px-8 py-4 rounded-xl
-                ${isLoading || (selectedCategories.length === 0 && !customInput.trim())
+                ${isLoading || selectedKeywords.length === 0
                   ? 'opacity-50 cursor-not-allowed' 
                   : 'hover:scale-105 hover:shadow-lg'
                 }
@@ -108,12 +145,12 @@ export default function IdeaGenerator({ onGenerate, isLoading, selectedCategorie
                   생성 중...
                 </span>
               ) : (
-                <>지금 바로 아이디어 받기</>
+                <>지금 바로 검색하기</>
               )}
             </button>
             
             <p className="text-sm text-slate-500 mt-4">
-              평균 3분 내에 3개의 맞춤형 아이디어를 제공합니다
+              선택된 키워드로 검색 결과를 먼저 확인해보세요
             </p>
           </div>
         </form>

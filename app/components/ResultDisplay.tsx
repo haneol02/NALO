@@ -5,15 +5,17 @@ import ShareButton from './ShareButton';
 
 interface Idea {
   title: string;
+  summary?: string;
   description: string;
+  coretech?: string[];
   detailedDescription?: string;
   target: string;
-  estimatedCost: number;
-  developmentTime: number;
-  difficulty: number;
-  marketPotential: number;
-  competition: number;
-  firstStep: string;
+  estimatedCost?: number;
+  developmentTime?: number;
+  difficulty?: number;
+  marketPotential?: number;
+  competition?: number;
+  firstStep?: string;
   techStack?: string;
   keyFeatures?: string[];
   challenges?: string[];
@@ -22,15 +24,16 @@ interface Idea {
 
 interface ResultDisplayProps {
   ideas: Idea[];
-  onRegenerate: () => void;
+  onBackToSearch: () => void;
   onNewGeneration: () => void;
 }
 
-export default function ResultDisplay({ ideas, onRegenerate, onNewGeneration }: ResultDisplayProps) {
+export default function ResultDisplay({ ideas, onBackToSearch, onNewGeneration }: ResultDisplayProps) {
   const [savedIdeas, setSavedIdeas] = useState<Set<number>>(new Set());
   const [expandedIdeas, setExpandedIdeas] = useState<Set<number>>(new Set());
   const [loadingDetails, setLoadingDetails] = useState<Set<number>>(new Set());
   const [detailedDescriptions, setDetailedDescriptions] = useState<Map<number, string>>(new Map());
+  const [detailedProjects, setDetailedProjects] = useState<Map<number, any>>(new Map());
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -45,8 +48,12 @@ export default function ResultDisplay({ ideas, onRegenerate, onNewGeneration }: 
     
     if (!isCurrentlyExpanded) {
       // 확장할 때 - 상세 설명이 없으면 생성
-      if (!detailedDescriptions.has(index)) {
-        setLoadingDetails(prev => new Set([...prev, index]));
+      if (!detailedDescriptions.has(index) && !detailedProjects.has(index)) {
+        setLoadingDetails(prev => {
+          const newSet = new Set(prev);
+          newSet.add(index);
+          return newSet;
+        });
         
         try {
           const response = await fetch('/api/generate-details', {
@@ -61,7 +68,17 @@ export default function ResultDisplay({ ideas, onRegenerate, onNewGeneration }: 
 
           if (response.ok) {
             const data = await response.json();
-            setDetailedDescriptions(prev => new Map(prev.set(index, data.detailedDescription)));
+            console.log('상세 기획서 응답 데이터:', data);
+            
+            // detailedProject 객체가 있는 경우 구조화된 형태로 저장
+            if (data.detailedProject) {
+              setDetailedProjects(prev => new Map(prev.set(index, data.detailedProject)));
+            } else if (data.detailedDescription) {
+              setDetailedDescriptions(prev => new Map(prev.set(index, data.detailedDescription)));
+            } else {
+              console.warn('예상하지 못한 응답 형식:', data);
+              setDetailedDescriptions(prev => new Map(prev.set(index, JSON.stringify(data, null, 2))));
+            }
           } else {
             // 에러 발생시 기본 설명 사용
             const fallbackDescription = `${ideas[index].title}에 대한 상세한 프로젝트 기획입니다. 현재 상세 정보를 생성 중이거나 일시적으로 사용할 수 없습니다. 나중에 다시 시도해주세요.`;
@@ -173,7 +190,7 @@ export default function ResultDisplay({ ideas, onRegenerate, onNewGeneration }: 
                     {loadingDetails.has(index) ? (
                       <>
                         <div className="animate-spin rounded-full h-3 w-3 border border-blue-600 border-t-transparent"></div>
-                        로딩중
+                        생성중
                       </>
                     ) : (
                       <>{isExpanded ? '간단히' : '자세히'}</>
@@ -189,12 +206,30 @@ export default function ResultDisplay({ ideas, onRegenerate, onNewGeneration }: 
                   <div className="w-1 h-16 bg-blue-500 rounded-full flex-shrink-0 mt-1"></div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-slate-800 mb-2">핵심 요약</h4>
+                    {idea.summary && (
+                      <p className="text-blue-700 font-medium leading-relaxed mb-2">
+                        {idea.summary}
+                      </p>
+                    )}
                     <p className="text-slate-700 leading-relaxed mb-4">
                       {idea.description}
                     </p>
+                    {idea.coretech && idea.coretech.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {idea.coretech.map((tech, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-center gap-4 text-sm text-slate-600">
-                      <span>예상 비용: <strong className="text-blue-600">{idea.estimatedCost}만원</strong></span>
-                      <span>개발 기간: <strong className="text-blue-600">{idea.developmentTime}주</strong></span>
+                      {idea.estimatedCost && (
+                        <span>예상 비용: <strong className="text-blue-600">{idea.estimatedCost}만원</strong></span>
+                      )}
+                      {idea.developmentTime && (
+                        <span>개발 기간: <strong className="text-blue-600">{idea.developmentTime}주</strong></span>
+                      )}
                       <span>타겟: <strong className="text-blue-600">{idea.target}</strong></span>
                     </div>
                   </div>
@@ -214,6 +249,61 @@ export default function ResultDisplay({ ideas, onRegenerate, onNewGeneration }: 
                           <div className="flex items-center gap-2 text-slate-500">
                             <div className="animate-spin rounded-full h-4 w-4 border border-slate-400 border-t-transparent"></div>
                             상세한 프로젝트 기획서를 생성하고 있습니다...
+                          </div>
+                        ) : detailedProjects.has(index) ? (
+                          <div className="space-y-6">
+                            {(() => {
+                              const project = detailedProjects.get(index);
+                              return (
+                                <div className="space-y-4">
+                                  <div className="bg-blue-50 p-4 rounded-lg">
+                                    <h5 className="font-semibold text-blue-800 mb-2">프로젝트 개요</h5>
+                                    <p className="text-blue-700 mb-1"><strong>제목:</strong> {project.title}</p>
+                                    <p className="text-blue-700 mb-1"><strong>부제:</strong> {project.subtitle}</p>
+                                    <p className="text-blue-700"><strong>핵심 가치:</strong> {project.coreValue}</p>
+                                  </div>
+                                  
+                                  {project.coreFeatures && (
+                                    <div>
+                                      <h5 className="font-semibold text-slate-800 mb-2">핵심 기능</h5>
+                                      <ul className="list-disc list-inside space-y-1 text-slate-700">
+                                        {project.coreFeatures.map((feature: string, idx: number) => (
+                                          <li key={idx}>{feature}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  
+                                  {project.techStack && (
+                                    <div>
+                                      <h5 className="font-semibold text-slate-800 mb-2">기술 스택</h5>
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <p className="font-medium text-slate-700">프론트엔드</p>
+                                          <p className="text-sm text-slate-600">{project.techStack.frontend?.join(', ')}</p>
+                                        </div>
+                                        <div>
+                                          <p className="font-medium text-slate-700">백엔드</p>
+                                          <p className="text-sm text-slate-600">{project.techStack.backend?.join(', ')}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {project.estimatedCosts && (
+                                    <div className="bg-slate-50 p-4 rounded-lg">
+                                      <h5 className="font-semibold text-slate-800 mb-2">예상 비용</h5>
+                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <p>개발: {project.estimatedCosts.development}만원</p>
+                                        <p>인프라: {project.estimatedCosts.infrastructure}만원</p>
+                                        <p>마케팅: {project.estimatedCosts.marketing}만원</p>
+                                        <p className="font-semibold">총계: {project.estimatedCosts.total}만원</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         ) : (
                           <div className="text-slate-700 leading-relaxed whitespace-pre-line">
@@ -252,60 +342,70 @@ export default function ResultDisplay({ ideas, onRegenerate, onNewGeneration }: 
                   </div>
 
                   {/* 실현 가능성 분석 */}
-                  <div className="bg-slate-50 rounded-lg p-6">
-                    <h4 className="font-semibold text-slate-800 mb-4">실현 가능성 분석</h4>
-                    <div className="grid md:grid-cols-3 gap-6">
-                      <div className="text-center">
-                        <div className="text-sm text-slate-600 mb-2">기술 난이도</div>
-                        <div className="flex justify-center mb-1">
-                          {renderStars(idea.difficulty)}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {idea.difficulty === 1 ? '매우 쉬움' : 
-                           idea.difficulty === 2 ? '쉬움' :
-                           idea.difficulty === 3 ? '보통' :
-                           idea.difficulty === 4 ? '어려움' : '매우 어려움'}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm text-slate-600 mb-2">시장 잠재력</div>
-                        <div className="flex justify-center mb-1">
-                          {renderStars(idea.marketPotential)}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {idea.marketPotential === 1 ? '매우 낮음' : 
-                           idea.marketPotential === 2 ? '낮음' :
-                           idea.marketPotential === 3 ? '보통' :
-                           idea.marketPotential === 4 ? '높음' : '매우 높음'}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm text-slate-600 mb-2">경쟁 우위도</div>
-                        <div className="flex justify-center mb-1">
-                          {renderStars(5 - idea.competition)}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {idea.competition === 1 ? '매우 유리' : 
-                           idea.competition === 2 ? '유리' :
-                           idea.competition === 3 ? '보통' :
-                           idea.competition === 4 ? '불리' : '매우 불리'}
-                        </div>
+                  {(idea.difficulty || idea.marketPotential || idea.competition) && (
+                    <div className="bg-slate-50 rounded-lg p-6">
+                      <h4 className="font-semibold text-slate-800 mb-4">실현 가능성 분석</h4>
+                      <div className="grid md:grid-cols-3 gap-6">
+                        {idea.difficulty && (
+                          <div className="text-center">
+                            <div className="text-sm text-slate-600 mb-2">기술 난이도</div>
+                            <div className="flex justify-center mb-1">
+                              {renderStars(idea.difficulty)}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {idea.difficulty === 1 ? '매우 쉬움' : 
+                               idea.difficulty === 2 ? '쉬움' :
+                               idea.difficulty === 3 ? '보통' :
+                               idea.difficulty === 4 ? '어려움' : '매우 어려움'}
+                            </div>
+                          </div>
+                        )}
+                        {idea.marketPotential && (
+                          <div className="text-center">
+                            <div className="text-sm text-slate-600 mb-2">시장 잠재력</div>
+                            <div className="flex justify-center mb-1">
+                              {renderStars(idea.marketPotential)}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {idea.marketPotential === 1 ? '매우 낮음' : 
+                               idea.marketPotential === 2 ? '낮음' :
+                               idea.marketPotential === 3 ? '보통' :
+                               idea.marketPotential === 4 ? '높음' : '매우 높음'}
+                            </div>
+                          </div>
+                        )}
+                        {idea.competition && (
+                          <div className="text-center">
+                            <div className="text-sm text-slate-600 mb-2">경쟁 우위도</div>
+                            <div className="flex justify-center mb-1">
+                              {renderStars(5 - idea.competition)}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {idea.competition === 1 ? '매우 유리' : 
+                               idea.competition === 2 ? '유리' :
+                               idea.competition === 3 ? '보통' :
+                               idea.competition === 4 ? '불리' : '매우 불리'}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* 실행 계획 */}
-                  <div className="bg-blue-50 rounded-lg p-6 border-l-4 border-blue-500">
-                    <div className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <div>
-                        <h4 className="font-semibold text-slate-800 mb-3">첫 번째 실행 단계</h4>
-                        <p className="text-slate-700 leading-relaxed">
-                          {idea.firstStep}
-                        </p>
+                  {idea.firstStep && (
+                    <div className="bg-blue-50 rounded-lg p-6 border-l-4 border-blue-500">
+                      <div className="flex items-start gap-3">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <div>
+                          <h4 className="font-semibold text-slate-800 mb-3">첫 번째 실행 단계</h4>
+                          <p className="text-slate-700 leading-relaxed">
+                            {idea.firstStep}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* 추가 분석 */}
                   {(idea.challenges || idea.successFactors) && (
@@ -360,10 +460,10 @@ export default function ResultDisplay({ ideas, onRegenerate, onNewGeneration }: 
       <div className="text-center space-y-4">
         <div className="space-x-4">
           <button
-            onClick={onRegenerate}
+            onClick={onBackToSearch}
             className="btn-secondary"
           >
-            다시 생성하기
+            검색 결과로 돌아가기
           </button>
           
           <button
@@ -378,7 +478,8 @@ export default function ResultDisplay({ ideas, onRegenerate, onNewGeneration }: 
         </div>
         
         <div className="text-sm text-slate-500 mt-6">
-          마음에 드는 아이디어가 있다면 친구들과 공유해보세요
+          <p>마음에 드는 아이디어가 있다면 친구들과 공유해보세요</p>
+          <p>더 많은 아이디어가 필요하시면 새로운 키워드로 다시 검색해보세요</p>
         </div>
       </div>
     </div>

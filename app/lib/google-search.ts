@@ -78,7 +78,7 @@ function extractKeywordsFromText(text: string): string[] {
   const englishWords = text.match(/[A-Za-z]{3,15}/g) || [];
   const mixedWords = text.match(/[가-힣A-Za-z0-9]{2,15}/g) || [];
   
-  const allWords = [...new Set([...koreanWords, ...englishWords, ...mixedWords])];
+  const allWords = Array.from(new Set([...koreanWords, ...englishWords, ...mixedWords]));
   
   // 불용어 제거
   const stopWords = ['이것', '그것', '저것', '입니다', '합니다', '있습니다', '없습니다', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];

@@ -7,20 +7,12 @@ interface TrendKeyword {
   category: string;
 }
 
-const MOCK_TRENDS: TrendKeyword[] = [
-  { keyword: 'AI도구', category: '개발/기술' },
-  { keyword: '원격근무', category: '비즈니스' },
-  { keyword: '지속가능성', category: '라이프스타일' },
-  { keyword: 'NFT', category: '기술' },
-  { keyword: '메타버스', category: '기술' },
-  { keyword: '부업', category: '비즈니스' },
-  { keyword: '헬스테크', category: '헬스케어' },
-  { keyword: '펫테크', category: '라이프스타일' },
-];
+// 목업 데이터 제거 - 오직 실제 검색 결과만 표시
 
 export default function TrendKeywords() {
-  const [trends, setTrends] = useState<TrendKeyword[]>(MOCK_TRENDS);
+  const [trends, setTrends] = useState<TrendKeyword[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTrends();
@@ -30,6 +22,7 @@ export default function TrendKeywords() {
     try {
       console.log('=== 트렌드 키워드 fetch 시작 ===');
       setIsLoading(true);
+      setError(null);
       
       const response = await fetch('/api/trends', {
         method: 'GET',
@@ -43,23 +36,27 @@ export default function TrendKeywords() {
       if (response.ok) {
         const data = await response.json();
         console.log('트렌드 API 응답 데이터:', data);
-        console.log('받은 트렌드 수:', data.trends?.length || 0);
         
         if (data.success && data.trends && data.trends.length > 0) {
           const displayTrends = data.trends.slice(0, 8);
-          console.log('표시할 트렌드:', displayTrends.map((t: any) => t.keyword));
+          console.log('✅ 실제 트렌드 수집 성공:', displayTrends.map((t: any) => t.keyword));
           setTrends(displayTrends);
-          console.log('✅ 트렌드 업데이트 완료');
         } else {
-          console.log('⚠️ 서버에서 트렌드 없음, 목업 데이터 유지');
+          console.log('❌ 트렌드 수집 실패 - 빈 배열');
+          setError('트렌드 수집에 실패했습니다');
+          setTrends([]);
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.log('❌ 트렌드 API 응답 실패:', response.status, errorData);
+        console.log('❌ 트렌드 API 오류:', errorData.error);
+        setError(errorData.error || '트렌드 로드 실패');
+        setTrends([]);
       }
       console.log('==============================');
     } catch (error) {
       console.error('❌ 트렌드 fetch 에러:', error);
+      setError('네트워크 오류가 발생했습니다');
+      setTrends([]);
     } finally {
       setIsLoading(false);
     }
@@ -78,20 +75,41 @@ export default function TrendKeywords() {
           )}
         </div>
         
-        <div className="flex flex-wrap gap-2">
-          {trends.map((trend, index) => (
-            <span 
-              key={index}
-              className="tag hover:bg-blue-100 cursor-pointer transition-colors duration-200"
+        {error ? (
+          <div className="text-center py-4">
+            <p className="text-red-500 text-sm mb-2">{error}</p>
+            <button 
+              onClick={fetchTrends}
+              className="text-blue-500 text-sm hover:underline"
+              disabled={isLoading}
             >
-              {trend.keyword}
-            </span>
-          ))}
-        </div>
-        
-        <p className="text-sm text-slate-500 mt-4">
-          실시간으로 업데이트되는 글로벌 트렌드를 바탕으로 아이디어를 생성합니다
-        </p>
+              다시 시도
+            </button>
+          </div>
+        ) : trends.length > 0 ? (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {trends.map((trend, index) => (
+                <span 
+                  key={index}
+                  className="tag hover:bg-blue-100 cursor-pointer transition-colors duration-200"
+                >
+                  {trend.keyword}
+                </span>
+              ))}
+            </div>
+            
+            <p className="text-sm text-slate-500 mt-4">
+              실시간 검색 API에서 수집된 실제 트렌드 데이터입니다
+            </p>
+          </>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-slate-400 text-sm">
+              트렌드 데이터를 로드 중입니다...
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
