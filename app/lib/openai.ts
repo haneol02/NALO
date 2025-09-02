@@ -9,10 +9,11 @@ interface GenerateIdeasParams {
   categories: string[];
   customInput: string;
   trends?: string[];
+  previousIdeas?: string[];
 }
 
 export async function generateIdeas(params: GenerateIdeasParams) {
-  const { categories, customInput, trends = [] } = params;
+  const { categories, customInput, trends = [], previousIdeas = [] } = params;
   
   // 토큰 사용량 체크
   const todayUsage = await dbHelpers.getDailyTokenUsage();
@@ -29,18 +30,25 @@ export async function generateIdeas(params: GenerateIdeasParams) {
 
   const timestamp = Date.now();
   const randomSeed = Math.floor(Math.random() * 10000);
+  const sessionId = Math.floor(Math.random() * 100000);
+  
+  // 이전 아이디어 컨텍스트 구성
+  const previousIdeasContext = previousIdeas.length > 0 
+    ? `\n\n❌ 다음 아이디어들과는 절대 중복되지 않는 완전히 새로운 아이디어를 생성해주세요:\n${previousIdeas.map((title, i) => `${i+1}. ${title}`).join('\n')}\n위 아이디어들과 유사한 컨셉, 기술 스택, 타겟 고객을 피하고 완전히 다른 접근법을 사용하세요.`
+    : '';
   
   const prompt = `당신은 한국 시장에 특화된 실용적인 프로젝트 아이디어 생성 전문가입니다.
 
 ${trendContext}
 ${categoryContext}
-${userInput}
+${userInput}${previousIdeasContext}
 
 생성 시드: ${randomSeed} (매번 다른 아이디어를 위해 사용)
+세션 ID: ${sessionId} (중복 방지용)
 생성 시간: ${new Date(timestamp).toLocaleString()}
 
 위 정보를 바탕으로 실제로 구현 가능한 3개의 창의적이고 독창적인 프로젝트 아이디어를 생성해주세요. 
-이전에 생성했을 수 있는 아이디어와는 다른 새로운 관점과 접근법을 시도해주세요.
+${previousIdeas.length > 0 ? '특히 위에 명시된 이전 아이디어들과는 완전히 다른 새로운 관점과 접근법을 시도해주세요.' : '이전에 생성했을 수 있는 아이디어와는 다른 새로운 관점과 접근법을 시도해주세요.'}
 
 각 아이디어는 다음 요구사항을 만족해야 합니다:
 1. 실제로 개발 가능한 현실적인 아이디어
@@ -92,7 +100,7 @@ JSON 형식으로 다음과 같이 응답해주세요:
         }
       ],
       max_tokens: 2000,
-      temperature: 0.9,
+      temperature: 1.1, // 더 높은 창의성으로 중복 방지
     });
 
     const content = response.choices[0]?.message?.content;

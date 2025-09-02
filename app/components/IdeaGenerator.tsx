@@ -11,8 +11,9 @@ interface IdeaGeneratorProps {
 }
 
 export default function IdeaGenerator({ onGenerate, isLoading, selectedCategories: propSelectedCategories = [], customInput: propCustomInput = '' }: IdeaGeneratorProps) {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(propSelectedCategories);
-  const [customInput, setCustomInput] = useState(propCustomInput);
+  // 이전 검색 기록의 영향을 받지 않도록 항상 빈 상태로 시작
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [customInput, setCustomInput] = useState('');
 
   const handleCategoryToggle = (category: string) => {
     setSelectedCategories(prev => 

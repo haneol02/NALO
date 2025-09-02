@@ -28,18 +28,38 @@ export default function TrendKeywords() {
 
   const fetchTrends = async () => {
     try {
+      console.log('=== 트렌드 키워드 fetch 시작 ===');
       setIsLoading(true);
-      const response = await fetch('/api/trends');
+      
+      const response = await fetch('/api/trends', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('트렌드 API 응답 상태:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        if (data.trends && data.trends.length > 0) {
-          setTrends(data.trends.slice(0, 8));
+        console.log('트렌드 API 응답 데이터:', data);
+        console.log('받은 트렌드 수:', data.trends?.length || 0);
+        
+        if (data.success && data.trends && data.trends.length > 0) {
+          const displayTrends = data.trends.slice(0, 8);
+          console.log('표시할 트렌드:', displayTrends.map((t: any) => t.keyword));
+          setTrends(displayTrends);
+          console.log('✅ 트렌드 업데이트 완료');
+        } else {
+          console.log('⚠️ 서버에서 트렌드 없음, 목업 데이터 유지');
         }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.log('❌ 트렌드 API 응답 실패:', response.status, errorData);
       }
+      console.log('==============================');
     } catch (error) {
-      console.error('Error fetching trends:', error);
-      // 실패시 목업 데이터 유지
+      console.error('❌ 트렌드 fetch 에러:', error);
     } finally {
       setIsLoading(false);
     }

@@ -1,5 +1,6 @@
 import { search } from 'duck-duck-scrape';
 import { dbHelpers } from './supabase';
+import { googleCustomSearch, extractTrendsFromGoogleResults, checkGoogleApiUsage, incrementGoogleApiUsage } from './google-search';
 
 export interface TrendData {
   keyword: string;
@@ -21,85 +22,170 @@ const SEARCH_KEYWORDS = {
 } as const;
 
 export async function collectTrends(): Promise<TrendData[]> {
-  const allTrends: TrendData[] = [];
-
+  console.log('🔍 Collecting trends from multiple sources...');
+  
   try {
-    // 각 카테고리별로 트렌드 수집
-    const categoryEntries = Object.entries(SEARCH_KEYWORDS);
-    for (let catIndex = 0; catIndex < categoryEntries.length; catIndex++) {
-      const [category, keywords] = categoryEntries[catIndex];
-      
-      // 카테고리 간에도 대기 시간 추가
-      if (catIndex > 0) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-      
-      // 카테고리당 1개 키워드만 검색 (API 호출 제한 강화)
-      const selectedKeywords = keywords.slice(0, 1);
-      
-      for (let i = 0; i < selectedKeywords.length; i++) {
-        const keyword = selectedKeywords[i];
-        try {
-          // 첫 번째 요청이 아닌 경우 더 긴 대기
-          if (i > 0) {
-            await new Promise(resolve => setTimeout(resolve, 3000));
-          }
-          
-          const searchResults = await search(keyword);
-
-          // 검색 결과에서 트렌드 키워드 추출
-          const trends = extractTrendsFromResults(searchResults.results, category);
-          allTrends.push(...trends);
-
-        } catch (error) {
-          console.error(`Error searching for ${keyword}:`, error);
-          
-          // Rate limit 에러인 경우 더 긴 대기
-          if (error instanceof Error && error.message.includes('anomaly')) {
-            console.log(`Rate limit detected for "${keyword}", waiting 10 seconds...`);
-            await new Promise(resolve => setTimeout(resolve, 10000));
-          } else {
-            // 일반 에러인 경우 짧은 대기
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          }
-        }
-      }
-    }
-
-    // 중복 제거 및 정리
-    const uniqueTrends = deduplicateTrends(allTrends);
+    const allTrends: TrendData[] = [];
     
-    // 수집된 트렌드가 없으면 기본 트렌드 반환
-    if (uniqueTrends.length === 0) {
-      console.log('No trends collected due to rate limits, using mock data');
-      return getMockTrends();
+    // 실제 DuckDuckGo 검색 시도
+    try {
+      console.log('🦆 DuckDuckGo 검색 시작...');
+      const ddgTrends = await searchRealTrends();
+      
+      if (ddgTrends.length > 0) {
+        console.log(`✅ DuckDuckGo에서 ${ddgTrends.length}개 트렌드 수집 성공`);
+        allTrends.push(...ddgTrends);
+      } else {
+        console.log('⚠️ DuckDuckGo에서 트렌드 없음');
+      }
+    } catch (ddgError) {
+      console.error('❌ DuckDuckGo 검색 실패:', ddgError);
+      console.log('🔄 목업 데이터로 대체...');
     }
     
-    // 데이터베이스에 저장
-    if (uniqueTrends.length > 0) {
+    // 목업 데이터를 베이스로 사용
+    const mockTrends = getMockTrends();
+    allTrends.push(...mockTrends);
+    console.log(`📦 목업 데이터 ${mockTrends.length}개 추가`);
+    
+    // 동적 트렌드 생성
+    const dynamicTrends = generateDynamicTrends();
+    allTrends.push(...dynamicTrends);
+    console.log(`⚡ 동적 트렌드 ${dynamicTrends.length}개 생성`);
+    
+    // 중복 제거 및 정렬
+    const uniqueTrends = deduplicateTrends(allTrends)
+      .sort((a, b) => (b.searchVolume || 0) - (a.searchVolume || 0))
+      .slice(0, 15);
+    
+    console.log(`🔄 중복 제거 후 ${uniqueTrends.length}개 트렌드 선별`);
+    
+    // 데이터베이스에 저장 시도
+    try {
       await dbHelpers.saveTrendKeywords(uniqueTrends);
-      
-      // 사용량 로그
       await dbHelpers.logUsage({
         api_type: 'ddgs',
         success: true,
       });
+      console.log(`💾 데이터베이스에 ${uniqueTrends.length}개 트렌드 저장 성공`);
+    } catch (dbError) {
+      console.error('❌ 데이터베이스 저장 실패:', dbError);
     }
-
-    return uniqueTrends;
-
-  } catch (error) {
-    // 에러 로그
-    await dbHelpers.logUsage({
-      api_type: 'ddgs',
-      success: false,
-    });
-
-    console.error('Error collecting trends:', error);
     
-    // 실패시 목업 데이터 반환
+    return uniqueTrends;
+    
+  } catch (error) {
+    console.error('💥 트렌드 수집 전체 실패:', error);
+    
+    // 에러 로그
+    try {
+      await dbHelpers.logUsage({
+        api_type: 'ddgs',
+        success: false,
+      });
+    } catch {}
+    
+    console.log('🔄 목업 데이터로 완전 대체');
     return getMockTrends();
   }
+}
+
+async function searchRealTrends(): Promise<TrendData[]> {
+  const trends: TrendData[] = [];
+  
+  try {
+    // Google Custom Search API 사용량 체크
+    const googleUsage = checkGoogleApiUsage();
+    console.log(`📊 Google API 사용량: ${googleUsage.used}/100 (남은 횟수: ${googleUsage.remaining})`);
+    
+    // 몇 개의 카테고리에서 검색 시도
+    const categoriesToSearch = ['개발/기술', '비즈니스', '라이프스타일'];
+    let googleSearchUsed = false;
+    
+    for (const category of categoriesToSearch) {
+      const keywords = SEARCH_KEYWORDS[category as keyof typeof SEARCH_KEYWORDS];
+      const randomKeyword = keywords[Math.floor(Math.random() * keywords.length)];
+      
+      console.log(`🔍 ${category} 카테고리에서 "${randomKeyword}" 검색 중...`);
+      
+      // Google Custom Search API 우선 시도 (사용량 제한 내에서)
+      if (googleUsage.canUse && !googleSearchUsed) {
+        try {
+          console.log(`🟢 Google Custom Search API 사용: "${randomKeyword}"`);
+          const googleResults = await googleCustomSearch(randomKeyword + ' 트렌드 2025');
+          
+          if (googleResults.length > 0) {
+            const extractedTrends = extractTrendsFromGoogleResults(googleResults, category);
+            trends.push(...extractedTrends);
+            incrementGoogleApiUsage();
+            googleSearchUsed = true;
+            console.log(`✅ Google에서 ${extractedTrends.length}개 트렌드 추출 완료`);
+            
+            // Google API 성공하면 다음 카테고리로
+            continue;
+          }
+        } catch (googleError) {
+          console.error(`❌ Google Custom Search 실패:`, googleError);
+          console.log(`🔄 DuckDuckGo로 대체 검색 시도...`);
+        }
+      }
+      
+      // DuckDuckGo 검색 시도 (Google 실패시 또는 사용량 초과시)
+      try {
+        console.log(`🦆 DuckDuckGo 검색: "${randomKeyword}"`);
+        const results = await search(randomKeyword, {
+          region: 'kr-kr',
+          safesearch: 'moderate',
+          time: 'w',
+          max_results: 5
+        });
+        
+        console.log(`📊 DuckDuckGo "${randomKeyword}" 검색 결과: ${results.length}개`);
+        
+        if (results.length > 0) {
+          const extractedTrends = extractTrendsFromResults(results, category);
+          trends.push(...extractedTrends);
+          console.log(`✨ DuckDuckGo에서 ${extractedTrends.length}개 트렌드 추출 완료`);
+        }
+        
+        // DuckDuckGo API 속도 제한을 위한 지연
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3초로 증가
+        
+      } catch (ddgError) {
+        console.error(`❌ DuckDuckGo "${randomKeyword}" 검색 실패:`, ddgError);
+      }
+    }
+    
+    console.log(`🎯 총 ${trends.length}개 실제 트렌드 수집 완료`);
+    return trends;
+    
+  } catch (error) {
+    console.error('💥 실제 트렌드 검색 전체 실패:', error);
+    throw error;
+  }
+}
+
+function generateDynamicTrends(): TrendData[] {
+  const currentHour = new Date().getHours();
+  const currentDay = new Date().getDay();
+  
+  // 시간대별 트렌드
+  const timeBasedTrends = [
+    { keyword: 'AI 자동화', category: '개발/기술', searchVolume: 600 + currentHour * 10 },
+    { keyword: '스마트워크', category: '비즈니스', searchVolume: 500 + currentHour * 8 },
+    { keyword: '디지털노마드', category: '라이프스타일', searchVolume: 400 + currentHour * 6 },
+  ];
+  
+  // 요일별 트렌드
+  const dayBasedTrends = [
+    { keyword: currentDay < 2 ? '주말창업' : '온라인마케팅', category: '비즈니스', searchVolume: 450 },
+    { keyword: currentDay < 5 ? '재택근무' : '부업아이템', category: '비즈니스', searchVolume: 380 },
+  ];
+  
+  return [...timeBasedTrends, ...dayBasedTrends].map(trend => ({
+    ...trend,
+    source: 'dynamic'
+  }));
 }
 
 function extractTrendsFromResults(results: any[], category: string): TrendData[] {
@@ -160,23 +246,31 @@ function deduplicateTrends(trends: TrendData[]): TrendData[] {
 
 function getMockTrends(): TrendData[] {
   return [
-    { keyword: 'AI도구', category: '개발/기술', source: 'mock' },
-    { keyword: '원격근무', category: '비즈니스', source: 'mock' },
-    { keyword: '지속가능성', category: '라이프스타일', source: 'mock' },
-    { keyword: 'NFT', category: '개발/기술', source: 'mock' },
-    { keyword: '메타버스', category: '개발/기술', source: 'mock' },
-    { keyword: '부업', category: '비즈니스', source: 'mock' },
-    { keyword: '헬스테크', category: '헬스케어', source: 'mock' },
-    { keyword: '펫테크', category: '라이프스타일', source: 'mock' },
+    { keyword: 'AI도구', category: '개발/기술', source: 'mock', searchVolume: 850 },
+    { keyword: '원격근무', category: '비즈니스', source: 'mock', searchVolume: 720 },
+    { keyword: '지속가능성', category: '라이프스타일', source: 'mock', searchVolume: 630 },
+    { keyword: 'NFT', category: '개발/기술', source: 'mock', searchVolume: 590 },
+    { keyword: '메타버스', category: '개발/기술', source: 'mock', searchVolume: 540 },
+    { keyword: '부업', category: '비즈니스', source: 'mock', searchVolume: 480 },
+    { keyword: '헬스테크', category: '헬스케어', source: 'mock', searchVolume: 420 },
+    { keyword: '펫테크', category: '라이프스타일', source: 'mock', searchVolume: 380 },
+    { keyword: '핀테크', category: '금융', source: 'mock', searchVolume: 340 },
+    { keyword: '에듀테크', category: '교육', source: 'mock', searchVolume: 310 },
+    { keyword: '푸드테크', category: '라이프스타일', source: 'mock', searchVolume: 280 },
+    { keyword: '클린테크', category: '라이프스타일', source: 'mock', searchVolume: 250 },
   ];
 }
 
 export async function getTrendKeywords(): Promise<TrendData[]> {
   try {
+    console.log('🗃️ 데이터베이스에서 트렌드 조회 중...');
+    
     // 먼저 데이터베이스에서 최신 트렌드 조회
     const dbTrends = await dbHelpers.getTrendKeywords(20);
     
     if (dbTrends && dbTrends.length > 0) {
+      console.log(`✅ 데이터베이스에서 ${dbTrends.length}개 트렌드 발견`);
+      
       return dbTrends.map(trend => ({
         keyword: trend.keyword,
         category: trend.category,
@@ -185,11 +279,13 @@ export async function getTrendKeywords(): Promise<TrendData[]> {
       }));
     }
 
+    console.log('⚠️ 데이터베이스에 트렌드 없음, 새로 수집 시작...');
     // 데이터베이스에 데이터가 없으면 새로 수집
     return await collectTrends();
 
   } catch (error) {
-    console.error('Error getting trend keywords:', error);
+    console.error('❌ 트렌드 키워드 조회 오류:', error);
+    console.log('🔄 목업 데이터로 대체...');
     return getMockTrends();
   }
 }

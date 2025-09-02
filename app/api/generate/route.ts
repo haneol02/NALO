@@ -6,7 +6,7 @@ import { dbHelpers } from '@/app/lib/supabase';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { categories = [], customInput = '' }: { categories?: string[], customInput?: string } = body;
+    const { categories = [], customInput = '', previousIdeas = [] }: { categories?: string[], customInput?: string, previousIdeas?: string[] } = body;
 
     // 입력 검증
     if (categories.length === 0 && !customInput.trim()) {
@@ -37,7 +37,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 현재 트렌드 키워드 가져오기
+    console.log('=== 트렌드 키워드 수집 시작 ===');
     const trendKeywords = await getTrendKeywords();
+    console.log('전체 트렌드 키워드 수:', trendKeywords.length);
+    console.log('전체 트렌드:', trendKeywords.map(t => `${t.keyword} (${t.category})`));
+    
     const relevantTrends = trendKeywords
       .filter(trend => 
         categories.length === 0 || 
@@ -45,6 +49,11 @@ export async function POST(request: NextRequest) {
       )
       .slice(0, 5)
       .map(trend => trend.keyword);
+    
+    console.log('필터링된 관련 트렌드:', relevantTrends);
+    console.log('사용자 카테고리:', categories);
+    console.log('이전 아이디어 (중복 방지용):', previousIdeas);
+    console.log('========================');
 
     // 캐시된 아이디어 확인 (선택사항)
     let cachedIdeas = [];
@@ -91,6 +100,7 @@ export async function POST(request: NextRequest) {
       categories,
       customInput,
       trends: relevantTrends,
+      previousIdeas,
     });
 
     // 생성된 아이디어를 캐시에 저장

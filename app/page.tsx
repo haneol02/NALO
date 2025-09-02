@@ -14,30 +14,51 @@ export default function HomePage() {
   const [customInput, setCustomInput] = useState('');
 
   const handleGenerateIdeas = async (categories: string[], custom: string) => {
+    console.log('=== 아이디어 생성 요청 시작 ===');
+    console.log('선택된 카테고리:', categories);
+    console.log('직접 입력:', custom);
+    console.log('==============================');
+    
     setIsGenerating(true);
     setSelectedCategories(categories);
     setCustomInput(custom);
     
     try {
+      const requestBody = {
+        categories,
+        customInput: custom,
+        previousIdeas: ideas.map(idea => idea.title), // 이전 아이디어 제목들 전달
+      };
+      
+      console.log('API 요청 데이터:', requestBody);
+      
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          categories,
-          customInput: custom,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('API 응답 상태:', response.status);
+      
       if (!response.ok) {
         throw new Error('아이디어 생성에 실패했습니다.');
       }
 
       const data = await response.json();
+      console.log('=== API 응답 데이터 ===');
+      console.log('성공 여부:', data.success);
+      console.log('생성된 아이디어 수:', data.ideas?.length || 0);
+      console.log('사용된 토큰:', data.tokensUsed);
+      console.log('캐시 사용 여부:', data.cached);
+      console.log('=====================');
+      
       setIdeas(data.ideas || []);
     } catch (error) {
-      console.error('Error generating ideas:', error);
+      console.error('=== 아이디어 생성 에러 ===');
+      console.error('에러 내용:', error);
+      console.error('========================');
       setIdeas([]);
     } finally {
       setIsGenerating(false);
@@ -45,6 +66,9 @@ export default function HomePage() {
   };
 
   const handleRegenerateIdeas = () => {
+    console.log('=== 아이디어 재생성 요청 ===');
+    console.log('이전 아이디어:', ideas.map(idea => idea.title));
+    console.log('==========================');
     handleGenerateIdeas(selectedCategories, customInput);
   };
 

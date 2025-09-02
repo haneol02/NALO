@@ -9,9 +9,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const dbHelpers = {
   // 트렌드 키워드 저장
   async saveTrendKeywords(keywords: { keyword: string; category: string; source: string; searchVolume?: number }[]) {
+    const dbKeywords = keywords.map(k => ({
+      keyword: k.keyword,
+      category: k.category,
+      source: k.source,
+      search_volume: k.searchVolume || 0
+    }));
+    
     const { data, error } = await supabase
       .from('trends')
-      .upsert(keywords, { onConflict: 'keyword' });
+      .upsert(dbKeywords, { onConflict: 'keyword' });
     
     if (error) throw error;
     return data;
