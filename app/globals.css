@@ -24,46 +24,192 @@
   body {
     @apply bg-white text-slate-900 antialiased;
   }
+  
+  /* 기본적으로 모든 요소에 드래그 방지 */
+  * {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+  }
+  
+  /* 텍스트 선택 방지 (기획서와 아이디어 내용 제외) */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* 기획서와 아이디어 내용은 선택 가능 */
+  .selectable {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-blue-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-sm;
+    @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
   }
   
   .btn-secondary {
-    @apply bg-slate-100 text-slate-700 px-6 py-3 rounded-lg font-medium hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all duration-200;
+    @apply bg-white text-slate-700 px-6 py-3 rounded-xl font-medium border border-slate-200 hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 transition-all duration-300 shadow-sm hover:shadow-md;
   }
   
   .btn-outline {
-    @apply border border-slate-300 text-slate-700 px-6 py-3 rounded-lg font-medium hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200;
+    @apply border-2 border-blue-200 text-blue-700 px-6 py-3 rounded-xl font-medium hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300;
   }
   
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow duration-200;
+    @apply bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-8 hover:shadow-lg hover:border-slate-200 transition-all duration-300 backdrop-blur-sm;
   }
   
   .card-compact {
-    @apply bg-white rounded-lg border border-slate-200 p-4 hover:border-blue-200 transition-colors duration-200;
+    @apply bg-white rounded-xl border border-slate-100 p-4 sm:p-6 hover:border-blue-100 hover:shadow-md transition-all duration-300;
   }
   
   .input-field {
-    @apply w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200;
+    @apply w-full px-5 py-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-300 transition-all duration-300 bg-slate-50/50 focus:bg-white placeholder:text-slate-400;
   }
   
   .tag {
-    @apply inline-block px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium border border-blue-100;
+    @apply inline-block px-4 py-2 bg-blue-50 text-blue-700 rounded-full text-sm font-medium border border-blue-100 hover:bg-blue-100 transition-colors duration-200;
   }
   
   .tag-selected {
-    @apply inline-block px-3 py-1 bg-blue-500 text-white rounded-full text-sm font-medium;
+    @apply inline-block px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full text-sm font-semibold shadow-sm;
   }
   
   .section-title {
-    @apply text-xl font-semibold text-slate-900 mb-4;
+    @apply text-xl sm:text-2xl font-bold text-slate-900 mb-4 sm:mb-6 tracking-tight;
   }
   
   .metric-badge {
-    @apply inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-full;
+    @apply inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-600 text-sm font-medium rounded-full border border-slate-200;
+  }
+  
+  /* New premium styles */
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-600 bg-clip-text text-transparent;
+  }
+  
+  .icon-badge {
+    @apply flex items-center justify-center rounded-lg shadow-sm border transition-all duration-200;
+  }
+  
+  .premium-shadow {
+    @apply shadow-xl shadow-blue-500/10;
+  }
+  
+  /* 토스트 애니메이션 */
+  .animate-fade-in-down {
+    animation: fadeInDown 0.3s ease-out;
+  }
+  
+  .animate-fade-out-up {
+    animation: fadeOutUp 0.3s ease-in forwards;
+  }
+  
+  @keyframes fadeInDown {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -20px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+  
+  @keyframes fadeOutUp {
+    from {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    to {
+      opacity: 0;
+      transform: translate(-50%, -20px);
+    }
+  }
+  
+  /* 페이지 전환 애니메이션 */
+  .page-transition {
+    animation: pageEnter 0.5s ease-out;
+  }
+  
+  @keyframes pageEnter {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* 로딩 스피너 애니메이션 */
+  .loading-pulse {
+    animation: loadingPulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes loadingPulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.05);
+    }
+  }
+  
+  /* 카드 호버 애니메이션 */
+  .card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  /* 버튼 클릭 애니메이션 */
+  .btn-click {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .btn-click:active {
+    transform: scale(0.95);
+  }
+  
+  /* 파티클 효과 (블루-화이트) */
+  .particle {
+    position: absolute;
+    background: linear-gradient(45deg, rgba(59, 130, 246, 0.6), rgba(255, 255, 255, 0.8));
+    border-radius: 50%;
+    pointer-events: none;
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0) rotate(0deg);
+      opacity: 0.7;
+    }
+    50% {
+      transform: translateY(-20px) rotate(180deg);
+      opacity: 1;
+    }
   }
 }

@@ -84,17 +84,27 @@ export interface DetailedProjectFormat {
 export const SIMPLE_IDEA_PROMPT = `
 당신은 실용적인 프로젝트 아이디어 생성 전문가입니다.
 
-다음 검색 결과와 키워드를 바탕으로 실제로 개발 가능한 3개의 간단명료한 프로젝트 아이디어를 생성해주세요.
+다음 검색 결과와 키워드를 바탕으로 실제로 개발 가능한 1개의 상세하고 구체적인 프로젝트 아이디어를 생성해주세요.
 
-각 아이디어는 다음 JSON 형식으로 작성해주세요:
+아이디어는 다음 JSON 형식으로 상세하게 작성해주세요:
 {
   "ideas": [
     {
-      "title": "프로젝트 제목 (10자 내외)",
+      "title": "프로젝트 제목 (15자 내외)",
       "summary": "핵심 가치를 한 문장으로 요약",
-      "description": "무엇을 하는 서비스인지 2-3줄로 설명",
-      "coretech": ["핵심기술1", "핵심기술2", "핵심기술3"],
-      "target": "주요 타겟 사용자와 예상 수익모델"
+      "description": "무엇을 하는 서비스인지 상세히 설명 (5-7줄)",
+      "coretech": ["핵심기술1", "핵심기술2", "핵심기술3", "핵심기술4", "핵심기술5"],
+      "target": "주요 타겟 사용자와 시장 규모",
+      "estimatedCost": 예상_개발비용_만원단위_숫자,
+      "developmentTime": 예상_개발기간_주단위_숫자,
+      "difficulty": 기술난이도_1부터5까지_숫자,
+      "marketPotential": 시장잠재력_1부터5까지_숫자,
+      "competition": 경쟁강도_1부터5까지_숫자,
+      "firstStep": "프로젝트 시작을 위한 첫 번째 구체적 실행 단계",
+      "techStack": "구체적인 기술 스택 조합 (예: React + Node.js + MongoDB + AWS)",
+      "keyFeatures": ["핵심기능1", "핵심기능2", "핵심기능3", "핵심기능4", "핵심기능5"],
+      "challenges": ["예상되는 기술적 도전과제1", "예상되는 기술적 도전과제2", "예상되는 기술적 도전과제3"],
+      "successFactors": ["성공요인1", "성공요인2", "성공요인3"]
     }
   ]
 }
@@ -104,6 +114,50 @@ export const SIMPLE_IDEA_PROMPT = `
 2. 명확한 문제 해결과 가치 제안
 3. 구체적인 타겟 고객
 4. 간단명료한 설명 (복잡한 내용 지양)
+`;
+
+// 기획서 양식 생성을 위한 프롬프트 템플릿
+export const IDEA_PLAN_PROMPT = `
+당신은 전문 프로젝트 기획서 작성 전문가입니다.
+
+다음 아이디어를 바탕으로 완전한 프로젝트 기획서를 작성해주세요.
+
+아이디어 정보:
+제목: {title}
+요약: {summary}
+설명: {description}
+핵심기술: {coretech}
+타겟: {target}
+
+다음 JSON 형식으로 기획서를 작성해주세요. 중요: JSON 구조는 정확히 유지하되, 설명은 자연스럽고 상세하게 작성해주세요:
+
+{
+  "ideaPlan": {
+    "project_name": "{title}",
+    "service_summary": "{summary}",
+    "created_date": "2025-09-03",
+    "project_type": "웹서비스",
+    "core_idea": "핵심 아이디어와 가치를 상세하게 설명하여 프로젝트의 본질과 차별점을 명확히 제시",
+    "background": "프로젝트 배경과 필요성을 구체적으로 설명하며 현재 시장 상황, 사용자 니즈, 해결해야 할 문제의 맥락을 포함하여 작성",
+    "target_customer": "주요 타겟 고객층을 구체적으로 세분화하여 설명하고, 각 고객군의 특성과 니즈를 명시",
+    "problem_to_solve": "해결하려는 핵심 문제를 현실적이고 구체적으로 설명하며, 문제의 규모와 영향도를 포함하여 작성",
+    "proposed_solution": "제안하는 해결책을 기술적 접근법과 비즈니스 관점에서 상세하게 설명하고, 구체적인 구현 방안과 차별점을 포함",
+    "features": ["기능1", "기능2", "기능3", "기능4", "기능5"],
+    "development_cost": 500,
+    "operation_cost": 100,
+    "marketing_cost": 200,
+    "other_cost": 100
+  }
+}
+
+중요 요구사항:
+1. service_summary는 아이디어의 핵심 가치를 한 문장으로 요약
+2. core_idea, background, problem_to_solve, proposed_solution은 구체적이고 상세하게 작성 (200-400자)
+3. 내용은 자연스럽게 작성하되, JSON 형식에 맞게 문자열로 처리
+4. features 배열은 정확히 5개 항목으로 구성하되 각각 구체적으로 설명
+5. 비용은 숫자만 입력 (따옴표 없음)
+6. 한국어로만 작성하며 전문적이고 설득력 있게 작성
+7. 실제 시장 상황과 기술적 실현 가능성을 고려하여 현실적으로 작성
 `;
 
 // 상세 기획서 생성을 위한 프롬프트 템플릿
@@ -230,6 +284,15 @@ export const DETAILED_PROJECT_PROMPT = `
 // 프롬프트에 데이터 삽입하는 헬퍼 함수
 export function createDetailedPrompt(idea: SimpleIdeaFormat): string {
   return DETAILED_PROJECT_PROMPT
+    .replace('{title}', idea.title)
+    .replace('{summary}', idea.summary) 
+    .replace('{description}', idea.description)
+    .replace('{coretech}', idea.coretech.join(', '))
+    .replace('{target}', idea.target);
+}
+
+export function createIdeaPlanPrompt(idea: SimpleIdeaFormat): string {
+  return IDEA_PLAN_PROMPT
     .replace('{title}', idea.title)
     .replace('{summary}', idea.summary) 
     .replace('{description}', idea.description)

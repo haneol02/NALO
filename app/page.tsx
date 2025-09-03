@@ -2,80 +2,61 @@
 
 import { useState } from 'react';
 import IdeaGenerator from './components/IdeaGenerator';
-import SearchResults from './components/SearchResults';
+import SimpleTopicExplorer from './components/SimpleTopicExplorer';
 import ResultDisplay from './components/ResultDisplay';
+import { AlertTriangle, Frown } from 'lucide-react';
 
 import { Idea } from '@/types';
 
 export default function HomePage() {
-  const [currentStep, setCurrentStep] = useState<'input' | 'search' | 'results'>('input');
+  const [currentStep, setCurrentStep] = useState<'input' | 'topics' | 'results'>('input');
   const [isGenerating, setIsGenerating] = useState(false);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [focusArea, setFocusArea] = useState('');
-  const [keywords, setKeywords] = useState<string[]>([]);
-  const [qualityScore, setQualityScore] = useState(0);
+  const [topicContext, setTopicContext] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSearchKeywords = async (keywords: string[]) => {
-    console.log('=== 키워드 검색 요청 시작 ===');
+  const handleStartTopicExploration = async (keywords: string[]) => {
+    console.log('=== 주제 탐색 시작 ===');
     console.log('선택된 키워드:', keywords);
     
-    setIsGenerating(true);
     setSelectedKeywords(keywords);
+    setCurrentStep('topics');
     setError(null);
-    
-    try {
-      const response = await fetch('/api/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ keywords }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '검색에 실패했습니다.');
-      }
-
-      const data = await response.json();
-      console.log('검색 결과:', data);
-      
-      setSearchResults(data.results || []);
-      setSearchQuery(data.searchQuery || '');
-      setFocusArea(data.focusArea || '');
-      setKeywords(data.keywords || []);
-      setQualityScore(data.qualityScore || 0);
-      setCurrentStep('search');
-    } catch (error) {
-      console.error('검색 에러:', error);
-      setError(error instanceof Error ? error.message : '검색 중 오류가 발생했습니다.');
-      setSearchResults([]);
-    } finally {
-      setIsGenerating(false);
-    }
   };
 
-  const handleGenerateIdeas = async () => {
-    console.log('=== 아이디어 생성 요청 시작 ===');
+  const handleTopicSelected = (context: any) => {
+    console.log('=== 최종 주제 선택됨 ===');
+    console.log('선택된 컨텍스트:', context);
+    
+    setTopicContext(context);
+    handleGenerateIdeas(context);
+  };
+
+  const handleGenerateIdeas = async (context?: any) => {
+    console.log('=== 아이디어 생성 요청 시작 (새 플로우) ===');
+    
+    const contextToUse = context || topicContext;
+    if (!contextToUse) {
+      setError('주제 정보가 없습니다.');
+      return;
+    }
     
     setIsGenerating(true);
     setCurrentStep('results');
     setError(null);
     
     try {
-      const response = await fetch('/api/generate', {
+      // Use new /api/ideas endpoint that only generates ideas without business plans
+      const response = await fetch('/api/ideas', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
           keywords: selectedKeywords,
-          searchResults: searchResults,
-          searchQuery: searchQuery
+          finalTopic: contextToUse.finalTopic || contextToUse.selectedPath?.join(' → ') || '',
+          topicContext: contextToUse
         }),
       });
 
@@ -87,10 +68,17 @@ export default function HomePage() {
       }
 
       const data = await response.json();
-      console.log('=== 생성 결과 ===');
+      console.log('=== 생성 결과 (아이디어만) ===');
       console.log('생성된 아이디어 수:', data.ideas?.length || 0);
+      console.log('사용된 토큰:', data.tokensUsed || 0);
       
-      setIdeas(data.ideas || []);
+      // Add unique IDs to ideas for business plan generation
+      const ideasWithIds = data.ideas?.map((idea: any, index: number) => ({
+        ...idea,
+        id: `idea_${Date.now()}_${index}`
+      })) || [];
+      
+      setIdeas(ideasWithIds);
     } catch (error) {
       console.error('아이디어 생성 에러:', error);
       setError(error instanceof Error ? error.message : '아이디어 생성 중 오류가 발생했습니다.');
@@ -100,55 +88,82 @@ export default function HomePage() {
     }
   };
 
-  const handleBackToSearch = () => {
-    setCurrentStep('search');
+  const handleBackToTopics = () => {
+    setCurrentStep('topics');
   };
 
   const handleNewSearch = () => {
     setCurrentStep('input');
     setIdeas([]);
-    setSearchResults([]);
     setSelectedKeywords([]);
-    setSearchQuery('');
-    setFocusArea('');
-    setKeywords([]);
-    setQualityScore(0);
+    setTopicContext(null);
     setError(null);
   };
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen page-transition no-select">
       {/* Header */}
-      <header className="text-center py-16 px-4 bg-gradient-to-b from-blue-50 to-white">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-6xl font-bold mb-4">
-            <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">NALO</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-slate-700 mb-2 font-medium">
-            날로 먹는 프로젝트 기획
-          </p>
-          <p className="text-lg text-slate-600 mb-8">
-            키워드 입력 → 검색 결과 확인 → 아이디어 생성 → 상세 기획서
-          </p>
+      <header className="relative text-center py-12 sm:py-20 px-4 bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100/20 via-transparent to-transparent"></div>
+        <div className="mb-4"></div>
+        
+        <div className="relative max-w-4xl mx-auto">
+          <div className="mb-12"></div>
+          
+          <div className="space-y-4 sm:space-y-6">
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black mb-2 sm:mb-4 tracking-tight">
+              <span className="gradient-text">NALO</span>
+            </h1>
+            <div className="mb-2"></div>
+            <p className="text-sm min-[375px]:text-base min-[425px]:text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl text-slate-700 mb-2 sm:mb-3 font-bold tracking-tight whitespace-nowrap">
+              날로 먹는 프로젝트 기획
+            </p>
+            <div className="max-w-2xl mx-auto">
+              <p className="text-xs min-[375px]:text-sm min-[425px]:text-base sm:text-lg text-slate-600 leading-relaxed whitespace-nowrap">
+                AI가 도와주는 스마트한 프로젝트 기획 솔루션
+              </p>
+              <div className="flex items-center justify-center gap-0.5 min-[375px]:gap-1 sm:gap-2 mt-4 text-[10px] min-[375px]:text-xs sm:text-sm text-slate-500 overflow-hidden max-w-[85%] mx-auto">
+                <div className="flex items-center gap-0.5 min-[375px]:gap-1 flex-shrink-0">
+                  <div className="flex items-center gap-0.5">
+                    <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full flex-shrink-0"></div>
+                    <span className="whitespace-nowrap">문장 입력</span>
+                  </div>
+                  <div className="w-1.5 min-[375px]:w-2 sm:w-3 h-px bg-slate-300 flex-shrink-0"></div>
+                </div>
+                <div className="flex items-center gap-0.5 min-[375px]:gap-1 flex-shrink-0">
+                  <div className="flex items-center gap-0.5">
+                    <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                    <span className="whitespace-nowrap">AI 분석</span>
+                  </div>
+                  <div className="w-1.5 min-[375px]:w-2 sm:w-3 h-px bg-slate-300 flex-shrink-0"></div>
+                </div>
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                  <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
+                  <span className="whitespace-nowrap">기획서 완성</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 pb-16">
+      <div className="max-w-6xl mx-auto px-4 pb-8 sm:pb-16">
         {currentStep === 'input' && (
           <>
             <IdeaGenerator 
-              onSearch={handleSearchKeywords}
-              isLoading={isGenerating}
+              onSearch={handleStartTopicExploration}
+              isLoading={false}
               selectedKeywords={selectedKeywords}
             />
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-6 max-w-4xl mx-auto">
-                <div className="flex items-start gap-2">
-                  <span className="text-red-500 text-xl">⚠️</span>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mt-6 max-w-4xl mx-auto shadow-sm">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="text-red-800 font-semibold mb-1">오류가 발생했습니다</h3>
-                    <p className="text-red-700">{error}</p>
+                    <h3 className="text-red-800 font-semibold mb-2">오류가 발생했습니다</h3>
+                    <p className="text-red-700 leading-relaxed">{error}</p>
                   </div>
                 </div>
               </div>
@@ -156,26 +171,19 @@ export default function HomePage() {
           </>
         )}
 
-        {currentStep === 'search' && (
+        {currentStep === 'topics' && (
           <>
-            <SearchResults 
-              searchQuery={searchQuery}
-              searchResults={searchResults}
-              selectedKeywords={selectedKeywords}
-              focusArea={focusArea}
-              keywords={keywords}
-              qualityScore={qualityScore}
-              onGenerateIdeas={handleGenerateIdeas}
-              onBackToInput={handleNewSearch}
-              isLoading={isGenerating}
+            <SimpleTopicExplorer 
+              initialKeywords={selectedKeywords}
+              onFinalSelection={handleTopicSelected}
             />
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-6">
-                <div className="flex items-start gap-2">
-                  <span className="text-red-500 text-xl">⚠️</span>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mt-6 max-w-4xl mx-auto shadow-sm">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="text-red-800 font-semibold mb-1">오류가 발생했습니다</h3>
-                    <p className="text-red-700">{error}</p>
+                    <h3 className="text-red-800 font-semibold mb-2">오류가 발생했습니다</h3>
+                    <p className="text-red-700 leading-relaxed">{error}</p>
                   </div>
                 </div>
               </div>
@@ -184,14 +192,54 @@ export default function HomePage() {
         )}
 
         {currentStep === 'results' && isGenerating && (
-          <div className="text-center py-16">
-            <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mb-6"></div>
-            <h3 className="text-xl font-semibold text-slate-700 mb-2">
-              아이디어를 생성하고 있습니다
-            </h3>
-            <p className="text-slate-500">
-              검색 결과를 바탕으로 최적의 아이디어를 준비 중입니다.
-            </p>
+          <div className="text-center py-16 relative">
+            {/* 파티클 효과 */}
+            <div className="absolute inset-0 overflow-hidden">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="particle"
+                  style={{
+                    width: `${Math.random() * 8 + 4}px`,
+                    height: `${Math.random() * 8 + 4}px`,
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 3}s`
+                  }}
+                ></div>
+              ))}
+            </div>
+            
+            {/* 중앙 로딩 스피너 */}
+            <div className="relative z-10">
+              <div className="inline-block relative mb-8">
+                <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-500 border-t-transparent loading-pulse"></div>
+                <div className="absolute inset-2 animate-pulse rounded-full bg-gradient-to-r from-blue-400 to-white opacity-20"></div>
+              </div>
+              
+              <h3 className="text-lg min-[375px]:text-xl font-semibold text-slate-700 mb-2 whitespace-nowrap loading-pulse">
+                아이디어를 생성하고 있습니다
+              </h3>
+              <div className="mb-2"></div>
+              <p className="text-xs min-[375px]:text-sm sm:text-base text-slate-500 whitespace-nowrap">
+                AI가 최적의 아이디어를 준비 중입니다...
+              </p>
+              
+              {/* 진행 단계 표시 */}
+              <div className="flex justify-center items-center gap-2 mt-6">
+                <div className="flex gap-1">
+                  {[...Array(4)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 rounded-full bg-blue-400 animate-pulse`}
+                      style={{
+                        animationDelay: `${i * 0.2}s`
+                      }}
+                    ></div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -200,25 +248,27 @@ export default function HomePage() {
             {ideas.length > 0 ? (
               <ResultDisplay 
                 ideas={ideas}
-                onBackToSearch={handleBackToSearch}
+                onBackToSearch={handleBackToTopics}
                 onNewGeneration={handleNewSearch}
               />
             ) : (
               <div className="text-center py-16">
                 <div className="max-w-2xl mx-auto">
-                  <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <span className="text-4xl">😵</span>
+                  <div className="w-24 h-24 bg-red-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <Frown className="w-12 h-12 text-red-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-slate-800 mb-4">
+                  <h3 className="text-xl min-[375px]:text-2xl font-bold text-slate-800 mb-4 whitespace-nowrap">
                     아이디어 생성에 실패했습니다
                   </h3>
-                  <p className="text-slate-600 mb-8">
-                    죄송합니다. 아이디어를 생성할 수 없었습니다. 다른 키워드로 다시 시도해보세요.
+                  <div className="mb-2"></div>
+                  <p className="text-sm min-[375px]:text-base text-slate-600 mb-8 text-center">
+                    죄송합니다. 아이디어를 생성할 수 없었습니다.<br className="sm:hidden" />
+                    <span className="hidden sm:inline"> </span>다른 키워드로 다시 시도해보세요.
                   </p>
                   {error && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                       <div className="flex items-start gap-2">
-                        <span className="text-red-500 text-xl">⚠️</span>
+                        <AlertTriangle className="w-5 h-5 text-red-500" />
                         <div>
                           <h4 className="text-red-800 font-semibold mb-1">오류 정보</h4>
                           <p className="text-red-700 text-sm">{error}</p>
@@ -228,10 +278,10 @@ export default function HomePage() {
                   )}
                   <div className="space-x-4">
                     <button
-                      onClick={handleBackToSearch}
+                      onClick={handleBackToTopics}
                       className="btn-secondary"
                     >
-                      검색 결과로 돌아가기
+                      주제 선택으로 돌아가기
                     </button>
                     <button
                       onClick={handleNewSearch}

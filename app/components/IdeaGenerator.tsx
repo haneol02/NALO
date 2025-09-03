@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { CATEGORIES } from '@/types';
+import { useState, useEffect } from 'react';
+import { FileText } from 'lucide-react';
 
 interface IdeaGeneratorProps {
   onSearch: (keywords: string[]) => void;
@@ -10,150 +10,117 @@ interface IdeaGeneratorProps {
 }
 
 export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: propSelectedKeywords = [] }: IdeaGeneratorProps) {
-  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(propSelectedKeywords);
-  const [inputValue, setInputValue] = useState('');
+  const [inputText, setInputText] = useState('');
+  const [totalIdeas, setTotalIdeas] = useState<number>(0);
 
-  const handleCategoryClick = (category: string) => {
-    if (!selectedKeywords.includes(category)) {
-      setSelectedKeywords(prev => [...prev, category]);
-    }
-  };
+  useEffect(() => {
+    fetchTotalIdeas();
+  }, []);
 
-  const handleKeywordRemove = (keyword: string) => {
-    setSelectedKeywords(prev => prev.filter(k => k !== keyword));
-  };
-
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && inputValue.trim()) {
-      e.preventDefault();
-      const newKeyword = inputValue.trim();
-      if (!selectedKeywords.includes(newKeyword)) {
-        setSelectedKeywords(prev => [...prev, newKeyword]);
+  const fetchTotalIdeas = async () => {
+    try {
+      const response = await fetch('/api/ideas');
+      const data = await response.json();
+      
+      if (data.success) {
+        setTotalIdeas(data.ideas?.length || 0);
       }
-      setInputValue('');
+    } catch (error) {
+      console.error('아이디어 개수 조회 실패:', error);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (selectedKeywords.length === 0) {
-      alert('최소 하나의 키워드를 선택하거나 입력해주세요.');
+    if (!inputText.trim()) {
+      alert('관심사나 주제에 대한 문장을 입력해주세요.');
       return;
     }
 
-    onSearch(selectedKeywords);
+    try {
+      const response = await fetch('/api/extract-keywords', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: inputText }),
+      });
+
+      if (!response.ok) {
+        throw new Error('키워드 추출에 실패했습니다.');
+      }
+
+      const data = await response.json();
+      onSearch(data.keywords);
+    } catch (error) {
+      console.error('키워드 추출 오류:', error);
+      alert('키워드 추출 중 오류가 발생했습니다.');
+    }
   };
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="card">
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* 선택된 키워드 */}
-          {selectedKeywords.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">
-                선택된 키워드
-              </h3>
-              <div className="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-lg border border-slate-200 min-h-[60px]">
-                {selectedKeywords.map((keyword, index) => (
-                  <span 
-                    key={index}
-                    className="inline-flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-800 rounded-lg font-medium"
-                  >
-                    {keyword}
-                    <button
-                      type="button"
-                      onClick={() => handleKeywordRemove(keyword)}
-                      className="hover:bg-blue-200 rounded-full p-1 transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 분야 선택 */}
-          <div>
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">
-              대표 분야 선택 <span className="text-sm text-slate-500">(클릭하면 키워드에 추가)</span>
-            </h3>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {CATEGORIES.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  onClick={() => handleCategoryClick(category)}
-                  className={`
-                    flex items-center justify-center p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
-                    ${selectedKeywords.includes(category) 
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 opacity-60 cursor-default' 
-                      : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700'
-                    }
-                  `}
-                  disabled={selectedKeywords.includes(category)}
-                >
-                  <span className="font-medium text-sm md:text-base">
-                    {category}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 직접 입력 */}
-          <div>
-            <label htmlFor="customInput" className="block text-lg font-semibold text-slate-800 mb-4">
-              직접 키워드 입력:
+      <div className="card card-hover">
+        <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+          <div className="space-y-3 sm:space-y-4">
+            <label htmlFor="textInput" className="block text-base sm:text-lg font-semibold text-slate-800">
+              관심사나 주제를 문장으로 입력해주세요:
             </label>
-            <input
-              type="text"
-              id="customInput"
-              placeholder="키워드 입력 후 Enter 키를 눌러주세요"
-              className="input-field"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleInputKeyDown}
+            <textarea
+              id="textInput"
+              placeholder="예: AI를 활용한 웹 서비스를 만들고 싶어요. 특히 사용자와 대화하면서 도움을 주는 챗봇 서비스에 관심이 있습니다."
+              className="input-field selectable min-h-[100px] sm:min-h-[120px] resize-none text-sm sm:text-base placeholder:text-xs sm:placeholder:text-sm"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
             />
-            <p className="text-sm text-slate-500 mt-2">
-              예: AI, 채팅봇, 사이드프로젝트, 창업 등 (개별 입력 후 Enter)
+            <p className="text-[10px] min-[375px]:text-xs sm:text-sm text-slate-500 text-center sm:text-left">
+              여러분의 관심사를 자연스럽게 설명해주세요.<br className="sm:hidden" />
+              <span className="hidden sm:inline"> </span>AI가 핵심 키워드를 추출하여 주제 탐색을 도와드립니다.
             </p>
           </div>
 
-          {/* 생성 버튼 */}
-          <div className="text-center">
-            <button
-              type="submit"
-              disabled={isLoading || selectedKeywords.length === 0}
-              className={`
-                btn-primary text-lg px-8 py-4 rounded-xl
-                ${isLoading || selectedKeywords.length === 0
-                  ? 'opacity-50 cursor-not-allowed' 
-                  : 'hover:scale-105 hover:shadow-lg'
-                }
-                transition-all duration-200
-              `}
-            >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                  생성 중...
-                </span>
-              ) : (
-                <>지금 바로 검색하기</>
-              )}
-            </button>
-            
-            <p className="text-sm text-slate-500 mt-4">
-              선택된 키워드로 검색 결과를 먼저 확인해보세요
-            </p>
+          <div className="text-center pt-2 sm:pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center justify-center max-w-md mx-auto sm:max-w-none">
+              <button
+                type="submit"
+                disabled={isLoading || !inputText.trim()}
+                className={`
+                  btn-primary btn-click text-lg px-8 py-4 rounded-xl
+                  ${isLoading || !inputText.trim()
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : 'hover:scale-105 hover:shadow-lg'
+                  }
+                  transition-all duration-200
+                `}
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                    키워드 추출 중...
+                  </span>
+                ) : (
+                  <>아이디어 생성하기</>
+                )}
+              </button>
+              
+              <a
+                href="/ideas"
+                className="btn-secondary btn-click text-lg px-8 py-4 rounded-xl hover:scale-105 hover:shadow-lg transition-all duration-200"
+              >
+                기획서 저장소
+              </a>
+            </div>
           </div>
         </form>
+        
+        {/* 통계 정보 */}
+        <div className="text-center mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-100">
+          <p className="text-[10px] min-[375px]:text-xs sm:text-sm text-slate-500 font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+            현재까지 <span className="bg-gradient-to-r from-blue-400/70 via-blue-500/70 to-indigo-500/70 bg-clip-text text-transparent">{totalIdeas.toLocaleString()}개의 아이디어</span>가 만들어졌습니다.
+          </p>
+        </div>
       </div>
     </div>
   );

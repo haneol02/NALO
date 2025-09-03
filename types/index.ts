@@ -1,15 +1,17 @@
 export interface Idea {
   id?: string;
   title: string;
+  summary?: string;
   description: string;
+  coretech?: string[];
   detailedDescription?: string;
   target: string;
-  estimatedCost: number; // 만원 단위
-  developmentTime: number; // 주 단위
-  difficulty: number; // 1-5 점수
-  marketPotential: number; // 1-5 점수
-  competition: number; // 1-5 점수
-  firstStep: string;
+  estimatedCost?: number; // 만원 단위
+  developmentTime?: number; // 주 단위
+  difficulty?: number; // 1-5 점수
+  marketPotential?: number; // 1-5 점수
+  competition?: number; // 1-5 점수
+  firstStep?: string;
   techStack?: string;
   keyFeatures?: string[];
   challenges?: string[];
