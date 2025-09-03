@@ -263,7 +263,7 @@ export default function BusinessPlanPage() {
                       <Copy className="w-4 h-4" />
                       링크 복사
                     </button>
-                    {navigator.share && (
+                    {typeof navigator !== 'undefined' && 'share' in navigator && (
                       <button
                         onClick={handleNativeShare}
                         className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700 text-sm"
