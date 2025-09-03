@@ -290,6 +290,61 @@ export default function ResultDisplay({ ideas, onBackToSearch, onNewGeneration }
                                     </div>
                                   )}
                                   
+                                  {project.developmentPhases && (
+                                    <div>
+                                      <h5 className="font-semibold text-slate-800 mb-2">개발 일정</h5>
+                                      <div className="space-y-4">
+                                        {project.developmentPhases.map((phase: any, idx: number) => (
+                                          <div key={idx} className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                                            <div className="flex justify-between items-start mb-2">
+                                              <h6 className="font-semibold text-blue-800">{phase.phase}</h6>
+                                              <span className="text-sm text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                                                {phase.duration}
+                                              </span>
+                                            </div>
+                                            {phase.tasks && (
+                                              <div className="mb-2">
+                                                <p className="text-sm font-medium text-blue-700 mb-1">주요 작업:</p>
+                                                <ul className="text-sm text-blue-600 space-y-1">
+                                                  {phase.tasks.map((task: string, taskIdx: number) => (
+                                                    <li key={taskIdx} className="flex items-start gap-2">
+                                                      <span className="w-1 h-1 bg-blue-400 rounded-full mt-2 flex-shrink-0"></span>
+                                                      {task}
+                                                    </li>
+                                                  ))}
+                                                </ul>
+                                              </div>
+                                            )}
+                                            {phase.deliverables && (
+                                              <div className="mb-2">
+                                                <p className="text-sm font-medium text-blue-700 mb-1">산출물:</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                  {phase.deliverables.map((deliverable: string, delIdx: number) => (
+                                                    <span key={delIdx} className="text-xs bg-blue-200 text-blue-700 px-2 py-1 rounded">
+                                                      {deliverable}
+                                                    </span>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                            {phase.milestones && (
+                                              <div>
+                                                <p className="text-sm font-medium text-blue-700 mb-1">마일스톤:</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                  {phase.milestones.map((milestone: string, msIdx: number) => (
+                                                    <span key={msIdx} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                                      📍 {milestone}
+                                                    </span>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
                                   {project.estimatedCosts && (
                                     <div className="bg-slate-50 p-4 rounded-lg">
                                       <h5 className="font-semibold text-slate-800 mb-2">예상 비용</h5>

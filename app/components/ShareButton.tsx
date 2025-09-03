@@ -6,8 +6,8 @@ interface Idea {
   title: string;
   description: string;
   target: string;
-  estimatedCost: number;
-  developmentTime: number;
+  estimatedCost?: number;
+  developmentTime?: number;
 }
 
 interface ShareButtonProps {
@@ -18,7 +18,7 @@ export default function ShareButton({ idea }: ShareButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const shareText = `NALO에서 찾은 프로젝트 아이디어: ${idea.title}\n\n${idea.description}\n\n예상 비용: ${idea.estimatedCost}만원\n개발 기간: ${idea.developmentTime}주\n\n#날로먹었어요 #프로젝트아이디어 #NALO`;
+  const shareText = `NALO에서 찾은 프로젝트 아이디어: ${idea.title}\n\n${idea.description}\n\n${idea.estimatedCost ? `예상 비용: ${idea.estimatedCost}만원\n` : ''}${idea.developmentTime ? `개발 기간: ${idea.developmentTime}주\n` : ''}\n#날로먹었어요 #프로젝트아이디어 #NALO`;
   
   const shareUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
