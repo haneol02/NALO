@@ -379,15 +379,15 @@ export default function BusinessPlanPage() {
                       <div className="flex justify-center mb-2">
                         {Array.from({ length: 5 }, (_, i) => (
                           <div key={i} className={`w-3 h-3 rounded-full inline-block mr-1 ${
-                            i < plan.difficulty ? 'bg-blue-500' : 'bg-slate-300'
+                            i < (plan.difficulty || 0) ? 'bg-blue-500' : 'bg-slate-300'
                           }`} />
                         ))}
                       </div>
                       <div className="text-xs text-slate-500">
-                        {plan.difficulty === 1 ? '매우 쉬움' : 
-                         plan.difficulty === 2 ? '쉬움' :
-                         plan.difficulty === 3 ? '보통' :
-                         plan.difficulty === 4 ? '어려움' : '매우 어려움'}
+                        {(plan.difficulty || 0) === 1 ? '매우 쉬움' : 
+                         (plan.difficulty || 0) === 2 ? '쉬움' :
+                         (plan.difficulty || 0) === 3 ? '보통' :
+                         (plan.difficulty || 0) === 4 ? '어려움' : '매우 어려움'}
                       </div>
                     </div>
                   )}
@@ -397,15 +397,15 @@ export default function BusinessPlanPage() {
                       <div className="flex justify-center mb-2">
                         {Array.from({ length: 5 }, (_, i) => (
                           <div key={i} className={`w-3 h-3 rounded-full inline-block mr-1 ${
-                            i < plan.market_potential ? 'bg-green-500' : 'bg-slate-300'
+                            i < (plan.market_potential || 0) ? 'bg-green-500' : 'bg-slate-300'
                           }`} />
                         ))}
                       </div>
                       <div className="text-xs text-slate-500">
-                        {plan.market_potential === 1 ? '매우 낮음' : 
-                         plan.market_potential === 2 ? '낮음' :
-                         plan.market_potential === 3 ? '보통' :
-                         plan.market_potential === 4 ? '높음' : '매우 높음'}
+                        {(plan.market_potential || 0) === 1 ? '매우 낮음' : 
+                         (plan.market_potential || 0) === 2 ? '낮음' :
+                         (plan.market_potential || 0) === 3 ? '보통' :
+                         (plan.market_potential || 0) === 4 ? '높음' : '매우 높음'}
                       </div>
                     </div>
                   )}
@@ -415,15 +415,15 @@ export default function BusinessPlanPage() {
                       <div className="flex justify-center mb-2">
                         {Array.from({ length: 5 }, (_, i) => (
                           <div key={i} className={`w-3 h-3 rounded-full inline-block mr-1 ${
-                            i < (5 - plan.competition) ? 'bg-orange-500' : 'bg-slate-300'
+                            i < (5 - (plan.competition || 0)) ? 'bg-orange-500' : 'bg-slate-300'
                           }`} />
                         ))}
                       </div>
                       <div className="text-xs text-slate-500">
-                        {plan.competition === 1 ? '매우 유리' : 
-                         plan.competition === 2 ? '유리' :
-                         plan.competition === 3 ? '보통' :
-                         plan.competition === 4 ? '불리' : '매우 불리'}
+                        {(plan.competition || 0) === 1 ? '매우 유리' : 
+                         (plan.competition || 0) === 2 ? '유리' :
+                         (plan.competition || 0) === 3 ? '보통' :
+                         (plan.competition || 0) === 4 ? '불리' : '매우 불리'}
                       </div>
                     </div>
                   )}
