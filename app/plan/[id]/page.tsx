@@ -69,6 +69,8 @@ interface IdeaPlan {
   risk_response: string;
   contingency_plan: string;
   created_at: string;
+  input_keywords?: string[];
+  search_query?: string;
 }
 
 export default function BusinessPlanPage() {
@@ -323,6 +325,19 @@ export default function BusinessPlanPage() {
                 <span>총 {formatCost(plan.development_cost + plan.operation_cost + plan.marketing_cost + plan.other_cost)}</span>
               </div>
             </div>
+            {/* 키워드 표시 */}
+            {plan.input_keywords && plan.input_keywords.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {plan.input_keywords.map((keyword, index) => (
+                  <span 
+                    key={index}
+                    className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                  >
+                    {keyword}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </header>
 
@@ -397,7 +412,7 @@ export default function BusinessPlanPage() {
                       <div className="flex justify-center mb-2">
                         {Array.from({ length: 5 }, (_, i) => (
                           <div key={i} className={`w-3 h-3 rounded-full inline-block mr-1 ${
-                            i < (plan.market_potential || 0) ? 'bg-green-500' : 'bg-slate-300'
+                            i < (plan.market_potential || 0) ? 'bg-blue-500' : 'bg-slate-300'
                           }`} />
                         ))}
                       </div>
@@ -415,7 +430,7 @@ export default function BusinessPlanPage() {
                       <div className="flex justify-center mb-2">
                         {Array.from({ length: 5 }, (_, i) => (
                           <div key={i} className={`w-3 h-3 rounded-full inline-block mr-1 ${
-                            i < (5 - (plan.competition || 0)) ? 'bg-orange-500' : 'bg-slate-300'
+                            i < (5 - (plan.competition || 0)) ? 'bg-blue-500' : 'bg-slate-300'
                           }`} />
                         ))}
                       </div>
