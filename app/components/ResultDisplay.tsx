@@ -17,11 +17,10 @@ import { Idea } from '@/types';
 
 interface ResultDisplayProps {
   ideas: Idea[];
-  onBackToSearch: () => void;
   onNewGeneration: () => void;
 }
 
-export default function ResultDisplay({ ideas, onBackToSearch, onNewGeneration }: ResultDisplayProps) {
+export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayProps) {
   
   // Use the new business plan hook
   const { 
@@ -282,7 +281,7 @@ export default function ResultDisplay({ ideas, onBackToSearch, onNewGeneration }
                     <button
                       onClick={() => handleGenerateBusinessPlan(idea, index)}
                       disabled={isGeneratingPlan(idea.id)}
-                      className="btn-primary w-full sm:w-auto"
+                      className="btn-plan-generate w-full sm:w-auto"
                     >
                       {isGeneratingPlan(idea.id) ? '기획서 생성 중...' : '비즈니스 기획서 생성하기'}
                     </button>
@@ -309,24 +308,15 @@ export default function ResultDisplay({ ideas, onBackToSearch, onNewGeneration }
 
       {/* 액션 버튼들 */}
       <div className="text-center space-y-4">
-        <div className="space-x-4">
-          <button
-            onClick={onBackToSearch}
-            className="btn-secondary"
-          >
-            검색 결과로 돌아가기
-          </button>
-          
-          <button
-            onClick={() => {
-              onNewGeneration();
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className="btn-primary"
-          >
-            새로운 조건으로 생성하기
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            onNewGeneration();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          className="btn-primary"
+        >
+          새로운 조건으로 생성하기
+        </button>
         
         <div className="text-xs min-[375px]:text-sm text-slate-500 mt-6 text-center">
           <p className="mb-1">

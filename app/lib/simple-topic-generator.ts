@@ -28,8 +28,8 @@ export async function generateTopicsFromKeywords(
     }
     
   } catch (error) {
-    console.error('GPT 주제 생성 실패, fallback 사용:', error);
-    return getFallbackTopics(keywords, level);
+    console.error('GPT 주제 생성 실패:', error);
+    throw new Error('주제 생성에 실패했습니다. 다시 시도해주세요.');
   }
 }
 
@@ -87,34 +87,7 @@ function generateExpandedTopics(parentTopic: string, keywords: string[], level: 
   return topics;
 }
 
-// Fallback 주제 (에러 시)
-function getFallbackTopics(keywords: string[], level: number): SimpleTopic[] {
-  const mainKeyword = keywords[0] || '혁신적인';
-  
-  return [
-    {
-      id: `fallback_${level}_1`,
-      title: `${mainKeyword} 웹 애플리케이션`,
-      description: '사용자 친화적인 웹 기반 솔루션',
-      category: 'Fallback',
-      level: level
-    },
-    {
-      id: `fallback_${level}_2`, 
-      title: `${mainKeyword} 모바일 앱`,
-      description: '편리한 모바일 애플리케이션',
-      category: 'Fallback',
-      level: level
-    },
-    {
-      id: `fallback_${level}_3`,
-      title: `${mainKeyword} 자동화 도구`,
-      description: '효율성을 높이는 자동화 솔루션',
-      category: 'Fallback', 
-      level: level
-    }
-  ];
-}
+// 더이상 사용하지 않는 fallback 함수 제거됨
 
 // 주제 히스토리 관리
 export interface TopicHistory {

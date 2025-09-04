@@ -17,7 +17,9 @@ import {
   Rocket,
   Zap,
   Copy,
-  MoreHorizontal
+  MoreHorizontal,
+  BarChart3,
+  CheckCircle
 } from 'lucide-react';
 
 interface IdeaPlan {
@@ -36,6 +38,12 @@ interface IdeaPlan {
   project_scope_include: string;
   project_scope_exclude: string;
   features: any[];
+  key_features?: string[];
+  difficulty?: number;
+  market_potential?: number;
+  competition?: number;
+  challenges?: string[];
+  success_factors?: string[];
   market_analysis: string;
   competitors: string;
   differentiation: string;
@@ -326,7 +334,7 @@ export default function BusinessPlanPage() {
               <FileText className="w-6 h-6 text-slate-600" />
               <h2 className="section-title">기본 정보</h2>
             </div>
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">작성일</h3>
                 <div className="mb-1"></div>
@@ -338,6 +346,129 @@ export default function BusinessPlanPage() {
                 <p className="text-slate-600">{plan.project_type}</p>
               </div>
             </div>
+
+            {/* 핵심 기능 */}
+            {plan.key_features && plan.key_features.length > 0 && (
+              <div className="mb-8">
+                <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  핵심 기능
+                </h3>
+                <div className="space-y-3">
+                  {plan.key_features.map((feature: string, idx: number) => (
+                    <div key={idx} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-slate-700 selectable">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 실현 가능성 분석 */}
+            {(plan.difficulty || plan.market_potential || plan.competition) && (
+              <div className="mb-8">
+                <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-600" />
+                  실현 가능성 분석
+                </h3>
+                <div className="grid md:grid-cols-3 gap-6">
+                  {plan.difficulty && (
+                    <div className="text-center p-4 bg-slate-50 rounded-lg">
+                      <div className="text-sm text-slate-600 mb-2">기술 난이도</div>
+                      <div className="flex justify-center mb-2">
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <div key={i} className={`w-3 h-3 rounded-full inline-block mr-1 ${
+                            i < plan.difficulty ? 'bg-blue-500' : 'bg-slate-300'
+                          }`} />
+                        ))}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {plan.difficulty === 1 ? '매우 쉬움' : 
+                         plan.difficulty === 2 ? '쉬움' :
+                         plan.difficulty === 3 ? '보통' :
+                         plan.difficulty === 4 ? '어려움' : '매우 어려움'}
+                      </div>
+                    </div>
+                  )}
+                  {plan.market_potential && (
+                    <div className="text-center p-4 bg-slate-50 rounded-lg">
+                      <div className="text-sm text-slate-600 mb-2">시장 잠재력</div>
+                      <div className="flex justify-center mb-2">
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <div key={i} className={`w-3 h-3 rounded-full inline-block mr-1 ${
+                            i < plan.market_potential ? 'bg-green-500' : 'bg-slate-300'
+                          }`} />
+                        ))}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {plan.market_potential === 1 ? '매우 낮음' : 
+                         plan.market_potential === 2 ? '낮음' :
+                         plan.market_potential === 3 ? '보통' :
+                         plan.market_potential === 4 ? '높음' : '매우 높음'}
+                      </div>
+                    </div>
+                  )}
+                  {plan.competition && (
+                    <div className="text-center p-4 bg-slate-50 rounded-lg">
+                      <div className="text-sm text-slate-600 mb-2">경쟁 우위도</div>
+                      <div className="flex justify-center mb-2">
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <div key={i} className={`w-3 h-3 rounded-full inline-block mr-1 ${
+                            i < (5 - plan.competition) ? 'bg-orange-500' : 'bg-slate-300'
+                          }`} />
+                        ))}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {plan.competition === 1 ? '매우 유리' : 
+                         plan.competition === 2 ? '유리' :
+                         plan.competition === 3 ? '보통' :
+                         plan.competition === 4 ? '불리' : '매우 불리'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 예상 도전과제와 성공 요인 */}
+            {(plan.challenges || plan.success_factors) && (
+              <div className="grid md:grid-cols-2 gap-6">
+                {plan.challenges && plan.challenges.length > 0 && (
+                  <div className="bg-red-50 rounded-lg p-6 border border-red-200">
+                    <h4 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-red-600" />
+                      예상 도전과제
+                    </h4>
+                    <ul className="space-y-2">
+                      {plan.challenges.map((challenge: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <div className="w-1 h-1 bg-red-400 rounded-full mt-2 flex-shrink-0"></div>
+                          <span className="text-sm text-red-700 selectable">{challenge}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {plan.success_factors && plan.success_factors.length > 0 && (
+                  <div className="bg-green-50 rounded-lg p-6 border border-green-200">
+                    <h4 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      성공 요인
+                    </h4>
+                    <ul className="space-y-2">
+                      {plan.success_factors.map((factor: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <div className="w-1 h-1 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
+                          <span className="text-sm text-green-700 selectable">{factor}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           {/* 2. 프로젝트 개요 */}
@@ -350,30 +481,72 @@ export default function BusinessPlanPage() {
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">핵심 아이디어</h3>
                 <div className="mb-1"></div>
-                <p className="text-slate-600 leading-relaxed">{plan.core_idea}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.core_idea || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">배경 및 동기</h3>
                 <div className="mb-1"></div>
-                <p className="text-slate-600 leading-relaxed">{plan.background}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.background || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">대상 고객/사용자</h3>
                 <div className="mb-1"></div>
-                <p className="text-slate-600 leading-relaxed">{plan.target_customer}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.target_customer || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">해결하려는 문제</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.problem_to_solve}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.problem_to_solve || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">제안하는 해결책</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.proposed_solution}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.proposed_solution || '데이터 없음'}</p>
               </div>
             </div>
           </section>
 
-          {/* 3. 주요 기능 */}
+          {/* 3. 주요 목표 */}
+          <section className="card">
+            <div className="flex items-center gap-2 mb-6">
+              <Target className="w-6 h-6 text-purple-600" />
+              <h2 className="section-title">프로젝트 목표</h2>
+            </div>
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-semibold text-slate-800 mb-2">주요 목표</h3>
+                <p className="text-slate-600 leading-relaxed">{plan.main_objectives || '데이터 없음'}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800 mb-2">성공 지표</h3>
+                <p className="text-slate-600 leading-relaxed">{plan.success_metrics || '데이터 없음'}</p>
+              </div>
+            </div>
+          </section>
+
+          {/* 4. 프로젝트 범위 */}
+          <section className="card">
+            <div className="flex items-center gap-2 mb-6">
+              <FileText className="w-6 h-6 text-orange-600" />
+              <h2 className="section-title">프로젝트 범위</h2>
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="p-6 bg-green-50 rounded-xl border border-green-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Target className="w-4 h-4 text-green-600" />
+                  <h3 className="font-semibold text-green-800">포함 사항</h3>
+                </div>
+                <p className="text-slate-600 leading-relaxed">{plan.project_scope_include || '데이터 없음'}</p>
+              </div>
+              <div className="p-6 bg-red-50 rounded-xl border border-red-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="w-4 h-4 text-red-600" />
+                  <h3 className="font-semibold text-red-800">제외 사항</h3>
+                </div>
+                <p className="text-slate-600 leading-relaxed">{plan.project_scope_exclude || '데이터 없음'}</p>
+              </div>
+            </div>
+          </section>
+
+          {/* 5. 주요 기능 */}
           <section className="card">
             <div className="flex items-center gap-2 mb-6">
               <Sparkles className="w-6 h-6 text-indigo-600" />
@@ -395,6 +568,28 @@ export default function BusinessPlanPage() {
             )}
           </section>
 
+          {/* 6. 시장 분석 */}
+          <section className="card">
+            <div className="flex items-center gap-2 mb-6">
+              <TrendingUp className="w-6 h-6 text-emerald-600" />
+              <h2 className="section-title">시장 분석</h2>
+            </div>
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-semibold text-slate-800 mb-2">시장 분석</h3>
+                <p className="text-slate-600 leading-relaxed">{plan.market_analysis || '데이터 없음'}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800 mb-2">경쟁사 분석</h3>
+                <p className="text-slate-600 leading-relaxed">{plan.competitors || '데이터 없음'}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800 mb-2">차별화 포인트</h3>
+                <p className="text-slate-600 leading-relaxed">{plan.differentiation || '데이터 없음'}</p>
+              </div>
+            </div>
+          </section>
+
           {/* SWOT 분석 */}
           <section className="card">
             <div className="flex items-center gap-2 mb-6">
@@ -407,28 +602,28 @@ export default function BusinessPlanPage() {
                   <Target className="w-4 h-4 text-green-600" />
                   <h3 className="font-semibold text-green-800">강점 (Strengths)</h3>
                 </div>
-                <p className="text-slate-600 leading-relaxed">{plan.swot_strengths}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.swot_strengths || '데이터 없음'}</p>
               </div>
               <div className="p-6 bg-red-50 rounded-xl border border-red-200">
                 <div className="flex items-center gap-2 mb-3">
                   <AlertTriangle className="w-4 h-4 text-red-600" />
                   <h3 className="font-semibold text-red-800">약점 (Weaknesses)</h3>
                 </div>
-                <p className="text-slate-600 leading-relaxed">{plan.swot_weaknesses}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.swot_weaknesses || '데이터 없음'}</p>
               </div>
               <div className="p-6 bg-blue-50 rounded-xl border border-blue-200">
                 <div className="flex items-center gap-2 mb-3">
                   <Rocket className="w-4 h-4 text-blue-600" />
                   <h3 className="font-semibold text-blue-800">기회 (Opportunities)</h3>
                 </div>
-                <p className="text-slate-600 leading-relaxed">{plan.swot_opportunities}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.swot_opportunities || '데이터 없음'}</p>
               </div>
               <div className="p-6 bg-amber-50 rounded-xl border border-amber-200">
                 <div className="flex items-center gap-2 mb-3">
                   <Zap className="w-4 h-4 text-amber-600" />
                   <h3 className="font-semibold text-amber-800">위협 (Threats)</h3>
                 </div>
-                <p className="text-slate-600 leading-relaxed">{plan.swot_threats}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.swot_threats || '데이터 없음'}</p>
               </div>
             </div>
           </section>
@@ -442,22 +637,71 @@ export default function BusinessPlanPage() {
             <div className="space-y-6">
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">사용 기술</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.tech_stack}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.tech_stack || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">시스템 아키텍처</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.system_architecture}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.system_architecture || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">데이터베이스</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.database_type}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.database_type || '데이터 없음'}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800 mb-2">개발 환경</h3>
+                <p className="text-slate-600 leading-relaxed">{plan.development_environment || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">보안 요구사항</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.security_requirements}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.security_requirements || '데이터 없음'}</p>
               </div>
             </div>
           </section>
+
+          {/* 프로젝트 단계 */}
+          {plan.project_phases && plan.project_phases.length > 0 && (
+            <section className="card">
+              <div className="flex items-center gap-2 mb-6">
+                <Calendar className="w-6 h-6 text-blue-600" />
+                <h2 className="section-title">프로젝트 단계</h2>
+              </div>
+              <div className="space-y-4">
+                {plan.project_phases.map((phase, index) => (
+                  <div key={index} className="p-6 bg-slate-50 rounded-xl border border-slate-200">
+                    <h3 className="font-semibold text-slate-800 mb-2">
+                      {typeof phase === 'string' ? phase : (phase.phase || `${index + 1}단계`)}
+                    </h3>
+                    {typeof phase === 'object' && (
+                      <div className="space-y-3">
+                        {phase.duration && (
+                          <div>
+                            <span className="text-sm font-medium text-slate-600">기간: </span>
+                            <span className="text-slate-700">{phase.duration}</span>
+                          </div>
+                        )}
+                        {phase.tasks && (
+                          <div>
+                            <span className="text-sm font-medium text-slate-600">주요 작업: </span>
+                            <span className="text-slate-700">
+                              {Array.isArray(phase.tasks) ? phase.tasks.join(', ') : phase.tasks}
+                            </span>
+                          </div>
+                        )}
+                        {phase.deliverables && (
+                          <div>
+                            <span className="text-sm font-medium text-slate-600">결과물: </span>
+                            <span className="text-slate-700">
+                              {Array.isArray(phase.deliverables) ? phase.deliverables.join(', ') : phase.deliverables}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* 예산 */}
           <section className="card">
@@ -502,15 +746,15 @@ export default function BusinessPlanPage() {
             <div className="space-y-6">
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">예상 위험요소</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.risk_factors}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.risk_factors || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">위험 대응 방안</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.risk_response}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.risk_response || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">비상 계획</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.contingency_plan}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.contingency_plan || '데이터 없음'}</p>
               </div>
             </div>
           </section>
@@ -524,19 +768,19 @@ export default function BusinessPlanPage() {
             <div className="space-y-6">
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">예상 효과</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.expected_effects}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.expected_effects || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">비즈니스 임팩트</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.business_impact}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.business_impact || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">사회적 가치</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.social_value}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.social_value || '데이터 없음'}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">ROI 예측</h3>
-                <p className="text-slate-600 leading-relaxed">{plan.roi_prediction}</p>
+                <p className="text-slate-600 leading-relaxed">{plan.roi_prediction || '데이터 없음'}</p>
               </div>
             </div>
           </section>

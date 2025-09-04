@@ -41,12 +41,12 @@ export function useIdeaPlan() {
       return null;
     }
 
-    // 필수 속성들이 없으면 기본값으로 채움
+    // 필수 속성들이 없으면 null로 설정 (더미 데이터 대신)
     const processedIdea = {
       ...idea,
-      summary: idea.summary || idea.title,
-      coretech: idea.coretech || ['웹개발'],
-      target: idea.target || '일반 사용자'
+      summary: idea.summary || null,
+      coretech: idea.coretech || null,
+      target: idea.target || null
     };
 
     setGeneratingPlanId(idea.id);

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { FileText } from 'lucide-react';
 
 interface IdeaGeneratorProps {
-  onSearch: (keywords: string[]) => void;
+  onSearch: (keywords: string[]) => Promise<void>;
   isLoading: boolean;
   selectedKeywords?: string[];
 }
@@ -12,6 +12,7 @@ interface IdeaGeneratorProps {
 export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: propSelectedKeywords = [] }: IdeaGeneratorProps) {
   const [inputText, setInputText] = useState('');
   const [totalIdeas, setTotalIdeas] = useState<number>(0);
+  const [isExtracting, setIsExtracting] = useState(false);
 
   useEffect(() => {
     fetchTotalIdeas();
@@ -39,6 +40,8 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
       return;
     }
 
+    setIsExtracting(true);
+    
     try {
       const response = await fetch('/api/extract-keywords', {
         method: 'POST',
@@ -53,10 +56,12 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
       }
 
       const data = await response.json();
-      onSearch(data.keywords);
+      await onSearch(data.keywords);
     } catch (error) {
       console.error('키워드 추출 오류:', error);
       alert('키워드 추출 중 오류가 발생했습니다.');
+    } finally {
+      setIsExtracting(false);
     }
   };
 
@@ -85,20 +90,25 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center justify-center max-w-md mx-auto sm:max-w-none">
               <button
                 type="submit"
-                disabled={isLoading || !inputText.trim()}
+                disabled={isLoading || isExtracting || !inputText.trim()}
                 className={`
                   btn-primary btn-click text-lg px-8 py-4 rounded-xl
-                  ${isLoading || !inputText.trim()
+                  ${isLoading || isExtracting || !inputText.trim()
                     ? 'opacity-50 cursor-not-allowed' 
                     : 'hover:scale-105 hover:shadow-lg'
                   }
                   transition-all duration-200
                 `}
               >
-                {isLoading ? (
+                {isExtracting ? (
                   <span className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                     키워드 추출 중...
+                  </span>
+                ) : isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                    아이디어 생성 중...
                   </span>
                 ) : (
                   <>아이디어 생성하기</>

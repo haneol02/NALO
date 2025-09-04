@@ -11,6 +11,7 @@ import { Idea } from '@/types';
 export default function HomePage() {
   const [currentStep, setCurrentStep] = useState<'input' | 'topics' | 'results'>('input');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isExtractingKeywords, setIsExtractingKeywords] = useState(false);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const [topicContext, setTopicContext] = useState<any>(null);
@@ -72,10 +73,15 @@ export default function HomePage() {
       console.log('생성된 아이디어 수:', data.ideas?.length || 0);
       console.log('사용된 토큰:', data.tokensUsed || 0);
       
-      // Add unique IDs to ideas for business plan generation
+      // Add unique IDs and keywords to ideas for business plan generation
       const ideasWithIds = data.ideas?.map((idea: any, index: number) => ({
         ...idea,
-        id: `idea_${Date.now()}_${index}`
+        id: `idea_${Date.now()}_${index}`,
+        // 키워드와 검색 정보 추가
+        keywords: contextToUse.keywords || selectedKeywords,
+        searchQuery: contextToUse.finalTopic || '',
+        input_keywords: contextToUse.keywords || selectedKeywords,
+        search_query: contextToUse.finalTopic || ''
       })) || [];
       
       setIdeas(ideasWithIds);
@@ -154,7 +160,7 @@ export default function HomePage() {
           <>
             <IdeaGenerator 
               onSearch={handleStartTopicExploration}
-              isLoading={false}
+              isLoading={isGenerating}
               selectedKeywords={selectedKeywords}
             />
             {error && (
@@ -248,7 +254,6 @@ export default function HomePage() {
             {ideas.length > 0 ? (
               <ResultDisplay 
                 ideas={ideas}
-                onBackToSearch={handleBackToTopics}
                 onNewGeneration={handleNewSearch}
               />
             ) : (

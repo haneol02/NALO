@@ -234,7 +234,7 @@ function validateIdeasResponse(parsed: any): boolean {
   return true;
 }
 
-// 기획서 응답 구조 검증 (단순화됨)
+// 기획서 응답 구조 검증 (강화됨)
 function validateIdeaPlanResponse(parsed: any): boolean {
   if (!parsed || typeof parsed !== 'object') {
     console.warn('기획서 응답이 객체가 아님');
@@ -248,26 +248,78 @@ function validateIdeaPlanResponse(parsed: any): boolean {
   
   const plan = parsed.ideaPlan;
   
-  // 필수 문자열 필드 검증
+  // 필수 문자열 필드 검증 - 모든 주요 필드 포함
   const requiredStringFields = [
-    'project_name', 'created_date', 'project_type', 'core_idea', 
-    'background', 'target_customer', 'problem_to_solve', 'proposed_solution'
+    'project_name', 'service_summary', 'project_type', 'core_idea', 
+    'background', 'target_customer', 'problem_to_solve', 'proposed_solution',
+    'main_objectives', 'success_metrics', 
+    'project_scope_include', 'project_scope_exclude',
+    'market_analysis', 'competitors', 'differentiation',
+    'swot_strengths', 'swot_weaknesses', 'swot_opportunities', 'swot_threats',
+    'tech_stack', 'system_architecture', 'database_type', 
+    'development_environment', 'security_requirements',
+    'expected_effects', 'business_impact', 'social_value', 'roi_prediction',
+    'risk_factors', 'risk_response', 'contingency_plan'
   ];
   
+  const missingFields = [];
   for (const field of requiredStringFields) {
-    if (!plan[field] || typeof plan[field] !== 'string' || plan[field].trim().length === 0) {
-      console.warn(`필수 기획서 필드 누락 또는 잘못된 타입: ${field}`, plan[field]);
-      return false;
+    if (!plan[field]) {
+      missingFields.push(field);
     }
   }
   
-  // features 배열 검증
+  if (missingFields.length > 0) {
+    console.warn(`누락된 필수 필드들: ${missingFields.join(', ')}`);
+    return false;
+  }
+  
+  // features 배열 검증 (필수)
   if (!Array.isArray(plan.features) || plan.features.length < 3) {
     console.warn('features가 유효한 배열이 아니거나 개수가 부족함:', plan.features);
     return false;
   }
   
-  // 비용 필드 검증 (더 관대하게)
+  // key_features 배열 검증 (필수)
+  if (!Array.isArray(plan.key_features) || plan.key_features.length < 3) {
+    console.warn('key_features가 유효한 배열이 아니거나 개수가 부족함:', plan.key_features);
+    return false;
+  }
+  
+  // project_phases 배열 검증 (필수)
+  if (!Array.isArray(plan.project_phases) || plan.project_phases.length < 3) {
+    console.warn('project_phases가 유효한 배열이 아니거나 개수가 부족함:', plan.project_phases);
+    return false;
+  }
+  
+  // 실현 가능성 분석 필드 검증 (필수)
+  const analysisFields = ['difficulty', 'market_potential', 'competition'];
+  for (const field of analysisFields) {
+    const value = plan[field];
+    if (value === undefined || value === null) {
+      console.warn(`실현 가능성 분석 필드가 누락됨: ${field}`);
+      return false;
+    }
+    
+    const numValue = typeof value === 'string' ? parseInt(value) : value;
+    if (isNaN(numValue) || numValue < 1 || numValue > 5) {
+      console.warn(`잘못된 실현 가능성 분석 필드: ${field} = ${value} (1-5 사이 정수여야 함)`);
+      return false;
+    }
+  }
+  
+  // challenges와 success_factors 배열 검증 (필수)
+  if (!Array.isArray(plan.challenges) || plan.challenges.length < 2) {
+    console.warn('challenges가 유효한 배열이 아니거나 개수가 부족함:', plan.challenges);
+    return false;
+  }
+  
+  if (!Array.isArray(plan.success_factors) || plan.success_factors.length < 2) {
+    console.warn('success_factors가 유효한 배열이 아니거나 개수가 부족함:', plan.success_factors);
+    return false;
+  }
+  
+  // 비용 필드 검증 (필수)
   const numberFields = ['development_cost', 'operation_cost', 'marketing_cost', 'other_cost'];
   for (const field of numberFields) {
     const value = plan[field];
@@ -276,7 +328,6 @@ function validateIdeaPlanResponse(parsed: any): boolean {
       return false;
     }
     
-    // 숫자가 아니면 문자열에서 숫자 추출 시도
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
     if (isNaN(numValue) || numValue < 0) {
       console.warn(`잘못된 비용 필드: ${field} = ${value}`);
@@ -284,7 +335,7 @@ function validateIdeaPlanResponse(parsed: any): boolean {
     }
   }
   
-  console.log('기획서 구조 검증 성공');
+  console.log('기획서 구조 검증 성공 - 모든 필수 필드 포함');
   return true;
 }
 
@@ -360,38 +411,9 @@ export async function testOpenAIConnection(): Promise<{ success: boolean; messag
   }
 }
 
-// JSON 파싱 실패시 대체 파싱
+// JSON 파싱 실패시 오류 처리
 function parseAlternativeFormat(content: string, tokensUsed: number) {
   console.error('JSON 파싱 실패 - 원본 응답:', content);
-  
-  // 마지막 시도: 정규식으로 JSON 구조 찾기
-  try {
-    const titleMatch = content.match(/"title"\s*:\s*"([^"]+)"/);
-    const summaryMatch = content.match(/"summary"\s*:\s*"([^"]+)"/);
-    const descriptionMatch = content.match(/"description"\s*:\s*"([^"]+)"/);
-    const targetMatch = content.match(/"target"\s*:\s*"([^"]+)"/);
-    
-    if (titleMatch && descriptionMatch && targetMatch) {
-      const fallbackIdea = {
-        title: titleMatch[1],
-        summary: summaryMatch ? summaryMatch[1] : titleMatch[1] + " 서비스",
-        description: descriptionMatch[1],
-        coretech: ["웹개발", "데이터베이스"],
-        target: targetMatch[1]
-      };
-      
-      console.log('정규식으로 추출한 아이디어:', fallbackIdea);
-      
-      return {
-        ideas: [fallbackIdea],
-        tokensUsed,
-        success: true,
-      };
-    }
-  } catch (regexError) {
-    console.error('정규식 파싱도 실패:', regexError);
-  }
-  
   throw new Error(`AI 응답을 파싱하는데 실패했습니다. 응답 내용을 확인해주세요: ${content.substring(0, 200)}...`);
 }
 
@@ -487,78 +509,9 @@ export async function generateDetails(idea: any) {
       console.error('상세 설명 JSON 파싱 실패:', parseError);
       console.error('원본 응답:', content);
       
-      // 대체 방법: 간단한 텍스트 응답으로 처리
-      try {
-        const fallbackProject = {
-          title: idea.title,
-          subtitle: idea.summary || idea.title + " 상세 기획",
-          coreValue: "혁신적인 기술과 사용자 중심 설계를 통한 시장 가치 창출",
-          targetUsers: [idea.target],
-          coreFeatures: idea.coretech || ["핵심 기능 1", "핵심 기능 2"],
-          keyDifferentiators: ["차별화된 사용자 경험", "효율적인 기술 구현"],
-          techStack: {
-            frontend: ["React", "TypeScript"],
-            backend: ["Node.js", "Express"],
-            database: ["MongoDB"],
-            external: ["외부 API"]
-          },
-          architecture: "클라우드 기반 확장 가능한 시스템 아키텍처",
-          marketSize: "성장 가능성이 높은 신규 시장",
-          competitors: ["기존 경쟁사 1", "기존 경쟁사 2"],
-          competitiveAdvantage: "독창적인 접근 방식과 우수한 사용자 경험",
-          revenueModel: ["구독 수익", "거래 수수료", "광고 수익"],
-          targetRevenue: {
-            month1: "50만원",
-            month6: "500만원", 
-            year1: "5,000만원"
-          },
-          developmentPhases: [
-            {
-              phase: "1단계: MVP 개발",
-              duration: "4-6주",
-              tasks: ["핵심 기능 구현", "사용자 인터페이스 개발"],
-              deliverables: ["기본 프로토타입", "사용성 테스트"]
-            }
-          ],
-          estimatedCosts: {
-            development: 300,
-            infrastructure: 50,
-            marketing: 200,
-            total: 550
-          },
-          risks: [
-            {
-              risk: "기술 구현의 복잡성",
-              probability: "Medium",
-              impact: "High",
-              mitigation: "단계적 개발과 전문가 자문"
-            }
-          ],
-          kpis: [
-            {
-              metric: "월간 활성 사용자",
-              target: "1,000명",
-              timeframe: "3개월"
-            }
-          ],
-          actionPlan: {
-            immediate: ["팀 구성", "기술 검토"],
-            month1: ["MVP 개발 시작", "초기 테스트"],
-            month3: ["베타 버전 출시", "사용자 피드백 수집"]
-          }
-        };
-        
-        console.log('대체 상세 기획서 생성:', fallbackProject);
-        
-        return {
-          detailedProject: fallbackProject,
-          tokensUsed,
-          success: true,
-        };
-      } catch (fallbackError) {
-        console.error('대체 기획서 생성도 실패:', fallbackError);
-        throw new Error(`상세 기획서 생성에 실패했습니다. 응답 내용: ${content.substring(0, 200)}...`);
-      }
+      // 상세 기획서 생성 실패 시 오류 처리
+      console.error('상세 기획서 생성 실패');
+      throw new Error(`상세 기획서 생성에 실패했습니다. 응답 내용: ${content.substring(0, 200)}...`);
     }
 
   } catch (error) {
@@ -648,7 +601,7 @@ export async function generateIdeaPlan(idea: any) {
       
       // 기획서 구조 검증
       if (!validateIdeaPlanResponse(parsed)) {
-        console.warn('기획서 JSON 구조가 예상과 다름, fallback 시도');
+        console.warn('기획서 JSON 구조가 예상과 다름');
         throw new Error('기획서 JSON 구조가 예상과 다릅니다.');
       }
       
@@ -661,32 +614,9 @@ export async function generateIdeaPlan(idea: any) {
       console.error('기획서 JSON 파싱 실패:', parseError);
       console.error('원본 응답:', content);
       
-      // Fallback: 기본 기획서 구조 반환
-      try {
-        const fallbackPlan = {
-          project_name: "기획서 생성 중 오류 발생",
-          created_date: new Date().toISOString().split('T')[0],
-          project_type: "웹서비스",
-          core_idea: "AI 응답 파싱 오류로 인한 임시 기획서입니다",
-          background: "기획서 생성 과정에서 기술적 오류가 발생하여 기본 템플릿을 제공합니다",
-          target_customer: "일반 사용자 및 개발자",
-          problem_to_solve: "기획서 생성 시스템의 안정성 개선이 필요합니다",
-          proposed_solution: "JSON 파싱 로직 개선과 오류 처리 강화를 통한 시스템 안정화",
-          features: ["기본 기능 구현", "오류 처리 시스템", "사용자 알림", "데이터 복구", "시스템 모니터링"],
-          development_cost: 200,
-          operation_cost: 50,
-          marketing_cost: 100,
-          other_cost: 50
-        };
-
-        return {
-          ideaPlan: fallbackPlan,
-          tokensUsed,
-          success: true,
-        };
-      } catch (fallbackError) {
-        throw new Error(`기획서 생성에 실패했습니다. 파싱 오류: ${parseError}`);
-      }
+      // Fallback: 오류 발생 시 빈 값으로 처리
+      console.error('기획서 생성 실패, 빈 값으로 반환');
+      throw new Error(`기획서 생성에 실패했습니다. 파싱 오류: ${parseError}`);
     }
 
   } catch (error) {
@@ -951,73 +881,20 @@ function buildEnhancedPromptContext(keywords: string[], finalTopic: string, topi
   return baseContext;
 }
 
-// Fallback 주제 생성
+// 주제 생성 실패 처리
 function generateFallbackTopics(
   keywords: string[], 
   parentTopic?: string, 
   level: number = 1,
   tokensUsed: number = 0
 ) {
-  const mainKeyword = keywords[0] || '혁신적인';
-  
-  if (level === 1) {
-    return {
-      success: true,
-      topics: [
-        {
-          id: 'fallback_1_1',
-          title: `${mainKeyword} 웹 플랫폼`,
-          description: '웹 기반 사용자 친화적 서비스',
-          category: '웹 서비스',
-          level: 1
-        },
-        {
-          id: 'fallback_1_2',
-          title: `${mainKeyword} 모바일 앱`,
-          description: '편리한 모바일 애플리케이션',
-          category: '모바일',
-          level: 1
-        },
-        {
-          id: 'fallback_1_3',
-          title: `${mainKeyword} 자동화 도구`,
-          description: '효율성을 높이는 자동화 솔루션',
-          category: '도구',
-          level: 1
-        }
-      ],
-      tokensUsed
-    };
-  } else {
-    const baseTopic = parentTopic || `${mainKeyword} 서비스`;
-    return {
-      success: true,
-      topics: [
-        {
-          id: `fallback_${level}_1`,
-          title: `${baseTopic} - 기본 기능`,
-          description: '핵심 기능에 집중한 구현',
-          category: `${level}단계`,
-          level: level
-        },
-        {
-          id: `fallback_${level}_2`,
-          title: `${baseTopic} - 고급 기능`,
-          description: '확장 기능을 포함한 구현',
-          category: `${level}단계`,
-          level: level
-        },
-        {
-          id: `fallback_${level}_3`,
-          title: `${baseTopic} - 특화 기능`,
-          description: '특정 용도에 최적화된 구현',
-          category: `${level}단계`,
-          level: level
-        }
-      ],
-      tokensUsed
-    };
-  }
+  console.error('주제 생성 실패');
+  return {
+    success: false,
+    topics: [],
+    tokensUsed,
+    error: '주제 생성에 실패했습니다. 다시 시도해주세요.'
+  };
 }
 
 export default openai;

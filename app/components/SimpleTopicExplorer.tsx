@@ -77,32 +77,9 @@ export default function SimpleTopicExplorer({
       }
     } catch (error) {
       console.error('초기 주제 로드 실패:', error);
-      // Fallback topics
-      const fallbackTopics = [
-        {
-          id: 'topic_1',
-          title: `${initialKeywords[0]} 웹 플랫폼`,
-          description: '웹 기반 사용자 친화적 서비스',
-          category: '웹 서비스',
-          level: 1
-        },
-        {
-          id: 'topic_2',
-          title: `${initialKeywords[0]} 모바일 앱`,
-          description: '편리한 모바일 애플리케이션',
-          category: '모바일',
-          level: 1
-        },
-        {
-          id: 'topic_3',
-          title: `${initialKeywords[0]} 자동화 도구`,
-          description: '효율성을 높이는 자동화 솔루션',
-          category: '도구',
-          level: 1
-        }
-      ];
-      setCurrentTopics(fallbackTopics);
-      setTopicCounter(4);
+      // 오류 처리 - 더미 데이터 대신 빈 값
+      setCurrentTopics([]);
+      setTopicCounter(1);
     } finally {
       setIsLoading(false);
     }
@@ -222,46 +199,8 @@ export default function SimpleTopicExplorer({
       }
     } catch (error) {
       console.error('주제 확장 실패:', error);
-      // Fallback expansion
-      const baseTopic = topic.title;
-      const fallbackTopics = [
-        {
-          id: `topic_${topicCounter}`,
-          title: `${baseTopic} 고도화 플랫폼`,
-          description: '고급 기능을 포함한 확장 플랫폼',
-          category: `확장`,
-          level: topic.level + 1,
-          parentId: topic.id,
-          isExpanded: true
-        },
-        {
-          id: `topic_${topicCounter + 1}`,
-          title: `${baseTopic} 모바일 솔루션`,
-          description: '모바일 환경에 최적화된 전용 솔루션',
-          category: `확장`,
-          level: topic.level + 1,
-          parentId: topic.id,
-          isExpanded: true
-        },
-        {
-          id: `topic_${topicCounter + 2}`,
-          title: `AI 기반 ${baseTopic}`,
-          description: 'AI 기술을 접목한 차세대 플랫폼',
-          category: `확장`,
-          level: topic.level + 1,
-          parentId: topic.id,
-          isExpanded: true
-        }
-      ];
-      
-      // 선택한 주제의 바로 다음 위치에 확장된 주제들을 삽입
-      setCurrentTopics(prev => {
-        const topicIndex = prev.findIndex(t => t.id === topic.id);
-        const beforeTopics = prev.slice(0, topicIndex + 1);
-        const afterTopics = prev.slice(topicIndex + 1);
-        return [...beforeTopics, ...fallbackTopics, ...afterTopics];
-      });
-      setTopicCounter(prev => prev + 3);
+      // 확장 실패 처리 - 더미 데이터 생성하지 않음
+      console.error('주제 확장 실패, 빈 값 반환');
     } finally {
       setExpandingTopicId(null);
     }
