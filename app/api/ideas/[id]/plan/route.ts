@@ -91,10 +91,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       contingency_plan: planResult.ideaPlan.contingency_plan || null,
       
       // 비용
-      development_cost: planResult.ideaPlan.development_cost !== undefined ? Number(planResult.ideaPlan.development_cost) : null,
-      operation_cost: planResult.ideaPlan.operation_cost !== undefined ? Number(planResult.ideaPlan.operation_cost) : null,
-      marketing_cost: planResult.ideaPlan.marketing_cost !== undefined ? Number(planResult.ideaPlan.marketing_cost) : null,
-      other_cost: planResult.ideaPlan.other_cost !== undefined ? Number(planResult.ideaPlan.other_cost) : null,
+      development_cost: planResult.ideaPlan.development_cost !== undefined ? Number(planResult.ideaPlan.development_cost) : 0,
+      operation_cost: planResult.ideaPlan.operation_cost !== undefined ? Number(planResult.ideaPlan.operation_cost) : 0,
+      marketing_cost: planResult.ideaPlan.marketing_cost !== undefined ? Number(planResult.ideaPlan.marketing_cost) : 0,
+      other_cost: planResult.ideaPlan.other_cost !== undefined ? Number(planResult.ideaPlan.other_cost) : 0,
       
       // 연결 정보
       idea_id: params.id, // 아이디어 ID 연결
