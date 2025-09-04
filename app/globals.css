@@ -55,11 +55,11 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
+    @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
   }
   
   .btn-plan-generate {
-    @apply bg-white text-slate-700 px-6 py-3 rounded-xl font-semibold border border-slate-200 hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 transition-all duration-300 shadow-sm hover:shadow-md transform hover:-translate-y-0.5;
+    @apply bg-white text-slate-700 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-semibold border border-slate-200 hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 transition-all duration-300 shadow-sm hover:shadow-md transform hover:-translate-y-0.5;
   }
   
   .btn-plan-generate:disabled {
@@ -71,7 +71,7 @@
   }
   
   .btn-secondary {
-    @apply bg-white text-slate-700 px-6 py-3 rounded-xl font-medium border border-slate-200 hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 transition-all duration-300 shadow-sm hover:shadow-md;
+    @apply bg-white text-slate-700 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium border border-slate-200 hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 transition-all duration-300 shadow-sm hover:shadow-md;
   }
   
   .btn-outline {
@@ -79,7 +79,7 @@
   }
   
   .card {
-    @apply bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-8 hover:shadow-lg hover:border-slate-200 transition-all duration-300 backdrop-blur-sm;
+    @apply bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-6 lg:p-8 hover:shadow-lg hover:border-slate-200 transition-all duration-300 backdrop-blur-sm;
   }
   
   .card-compact {
@@ -87,7 +87,7 @@
   }
   
   .input-field {
-    @apply w-full px-5 py-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-300 transition-all duration-300 bg-slate-50/50 focus:bg-white placeholder:text-slate-400;
+    @apply w-full px-4 sm:px-5 py-3 sm:py-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-300 transition-all duration-300 bg-slate-50/50 focus:bg-white placeholder:text-slate-400;
   }
   
   .tag {

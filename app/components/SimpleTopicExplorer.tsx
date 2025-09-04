@@ -251,7 +251,7 @@ export default function SimpleTopicExplorer({
           
           {/* 하위 주제들 */}
           {childTopics.length > 0 && (
-            <div className="ml-8 space-y-3">
+            <div className="ml-4 sm:ml-8 space-y-3">
               {childTopics.map((childTopic) => (
                 <TopicCard
                   key={childTopic.id}
@@ -288,13 +288,14 @@ export default function SimpleTopicExplorer({
     <div className="max-w-4xl mx-auto">
       {/* 헤더 */}
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-slate-800 mb-2 flex items-center justify-center gap-3">
-          <Lightbulb className="w-8 h-8 text-blue-600" />
-          프로젝트 아이디어 탐색
+        <h2 className="text-xl min-[375px]:text-2xl sm:text-3xl font-bold text-slate-800 mb-2 flex items-center justify-center gap-2 sm:gap-3 text-center px-4">
+          <Lightbulb className="w-6 sm:w-8 h-6 sm:h-8 text-blue-600" />
+          <span>프로젝트 아이디어 탐색</span>
         </h2>
         <div className="mb-2"></div>
-        <p className="text-lg text-slate-600">
-          원하는 주제로 바로 아이디어 생성하거나, 확장 버튼으로 더 많은 주제를 탐색해보세요
+        <p className="text-sm min-[375px]:text-base sm:text-lg text-slate-600 text-center px-4">
+          원하는 주제로 바로 아이디어 생성하거나,<br className="sm:hidden" />
+          <span className="hidden sm:inline"> </span>확장 버튼으로 더 많은 주제를 탐색해보세요
         </p>
       </div>
 
@@ -367,37 +368,37 @@ function TopicCard({ topic, onDirectGenerate, onExpand, isExpanding, allTopics }
   return (
     <div className={`border-2 rounded-xl bg-white card-hover transition-all duration-200 ${
       topic.parentId 
-        ? 'ml-8 border-blue-200 bg-blue-50/30 shadow-sm' 
+        ? 'border-blue-200 bg-blue-50/30 shadow-sm' 
         : 'border-slate-200 hover:shadow-lg'
     }`}>
       {/* 메인 카드 내용 */}
-      <div className="p-6">
-        <div className="flex items-start space-x-4">
+      <div className="p-4 sm:p-6">
+        <div className="flex items-start space-x-3 sm:space-x-4">
           <div className="flex-shrink-0">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+            <div className={`w-10 sm:w-12 h-10 sm:h-12 rounded-full flex items-center justify-center ${
               topic.parentId 
                 ? 'bg-blue-100 text-blue-600' 
                 : 'bg-slate-100 text-slate-600'
             }`}>
-              <span className="font-bold text-lg">
+              <span className="font-bold text-sm sm:text-lg">
                 {topicNumber}
               </span>
             </div>
           </div>
           
           <div className="flex-1">
-            <h3 className={`text-xl font-semibold mb-2 ${
+            <h3 className={`text-lg sm:text-xl font-semibold mb-2 ${
               topic.parentId ? 'text-blue-800' : 'text-slate-800'
             }`}>
               {topic.title}
             </h3>
-            <p className={`mb-4 ${
+            <p className={`text-sm sm:text-base mb-4 ${
               topic.parentId ? 'text-blue-700' : 'text-slate-600'
             }`}>
               {topic.description}
             </p>
             
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
               <div className="flex items-center space-x-2">
                 <span className={`px-2 py-1 rounded text-sm ${
                   topic.parentId 
@@ -413,36 +414,40 @@ function TopicCard({ topic, onDirectGenerate, onExpand, isExpanding, allTopics }
                 )}
               </div>
               
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={onDirectGenerate}
-                  className="btn-primary btn-click px-4 py-2 text-sm flex items-center gap-2"
+                  className="btn-primary btn-click px-3 sm:px-4 py-2 text-xs sm:text-sm flex items-center gap-1 sm:gap-2"
                 >
-                  <Play className="w-4 h-4" />
-                  아이디어 생성
+                  <Play className="w-3 sm:w-4 h-3 sm:h-4" />
+                  <span className="hidden min-[375px]:inline">아이디어 생성</span>
+                  <span className="min-[375px]:hidden">생성</span>
                 </button>
                 {!topic.parentId && !hasChildren && (
                   <button
                     onClick={handleExpandClick}
                     disabled={isExpanding}
-                    className="btn-secondary btn-click px-4 py-2 text-sm"
+                    className="btn-secondary btn-click px-3 sm:px-4 py-2 text-xs sm:text-sm"
                   >
                     {isExpanding ? (
                       <span className="flex items-center gap-1">
                         <div className="animate-spin rounded-full h-3 w-3 border border-slate-500 border-t-transparent"></div>
-                        확장 중...
+                        <span className="hidden min-[375px]:inline">확장 중...</span>
+                        <span className="min-[375px]:hidden">확장 중</span>
                       </span>
                     ) : (
-                      <span className="flex items-center gap-2">
-                        <Search className="w-4 h-4" />
-                        주제 확장
+                      <span className="flex items-center gap-1 sm:gap-2">
+                        <Search className="w-3 sm:w-4 h-3 sm:h-4" />
+                        <span className="hidden min-[375px]:inline">주제 확장</span>
+                        <span className="min-[375px]:hidden">확장</span>
                       </span>
                     )}
                   </button>
                 )}
                 {hasChildren && (
-                  <span className="text-sm text-slate-500 px-4 py-2">
-                    이미 확장됨 ({childTopics.length}개)
+                  <span className="text-xs sm:text-sm text-slate-500 px-2 sm:px-4 py-2">
+                    <span className="hidden min-[375px]:inline">이미 확장됨 ({childTopics.length}개)</span>
+                    <span className="min-[375px]:hidden">확장됨</span>
                   </span>
                 )}
               </div>
@@ -463,16 +468,17 @@ function TopicCard({ topic, onDirectGenerate, onExpand, isExpanding, allTopics }
               <button
                 onClick={handleExpandClick}
                 disabled={!expandKeywords.trim() || isExpanding}
-                className="btn-primary btn-click px-3 py-2 text-sm whitespace-nowrap"
+                className="btn-primary btn-click px-3 py-2 text-xs sm:text-sm flex-shrink-0"
               >
-                확장하기
+                <span className="hidden min-[375px]:inline">확장하기</span>
+                <span className="min-[375px]:hidden">확장</span>
               </button>
               <button
                 onClick={() => {
                   setShowKeywordInput(false);
                   setExpandKeywords('');
                 }}
-                className="btn-secondary btn-click px-3 py-2 text-sm"
+                className="btn-secondary btn-click px-3 py-2 text-xs sm:text-sm flex-shrink-0"
               >
                 취소
               </button>

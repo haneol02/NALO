@@ -80,19 +80,19 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
             />
-            <p className="text-[10px] min-[375px]:text-xs sm:text-sm text-slate-500 text-center sm:text-left">
+            <p className="text-[10px] min-[375px]:text-xs sm:text-sm text-slate-500 text-center px-2">
               여러분의 관심사를 자연스럽게 설명해주세요.<br className="sm:hidden" />
               <span className="hidden sm:inline"> </span>AI가 핵심 키워드를 추출하여 주제 탐색을 도와드립니다.
             </p>
           </div>
 
           <div className="text-center pt-2 sm:pt-4">
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center justify-center max-w-md mx-auto sm:max-w-none">
+            <div className="flex flex-col gap-3 items-stretch max-w-sm mx-auto sm:max-w-none sm:flex-row sm:items-center sm:justify-center sm:gap-4">
               <button
                 type="submit"
                 disabled={isLoading || isExtracting || !inputText.trim()}
                 className={`
-                  btn-primary btn-click text-lg px-8 py-4 rounded-xl
+                  btn-primary btn-click text-sm sm:text-lg px-4 sm:px-8 py-3 sm:py-4 rounded-xl
                   ${isLoading || isExtracting || !inputText.trim()
                     ? 'opacity-50 cursor-not-allowed' 
                     : 'hover:scale-105 hover:shadow-lg'
@@ -101,25 +101,31 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
                 `}
               >
                 {isExtracting ? (
-                  <span className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    키워드 추출 중...
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 sm:h-5 w-4 sm:w-5 border-2 border-white border-t-transparent"></div>
+                    <span className="hidden min-[375px]:inline">키워드 추출 중...</span>
+                    <span className="min-[375px]:hidden">추출 중...</span>
                   </span>
                 ) : isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    아이디어 생성 중...
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 sm:h-5 w-4 sm:w-5 border-2 border-white border-t-transparent"></div>
+                    <span className="hidden min-[375px]:inline">아이디어 생성 중...</span>
+                    <span className="min-[375px]:hidden">생성 중...</span>
                   </span>
                 ) : (
-                  <>아이디어 생성하기</>
+                  <span>
+                    <span className="hidden min-[375px]:inline">아이디어 생성하기</span>
+                    <span className="min-[375px]:hidden">생성하기</span>
+                  </span>
                 )}
               </button>
               
               <a
                 href="/ideas"
-                className="btn-secondary btn-click text-lg px-8 py-4 rounded-xl hover:scale-105 hover:shadow-lg transition-all duration-200"
+                className="btn-secondary btn-click text-sm sm:text-lg px-4 sm:px-8 py-3 sm:py-4 rounded-xl hover:scale-105 hover:shadow-lg transition-all duration-200"
               >
-                기획서 저장소
+                <span className="hidden min-[375px]:inline">기획서 저장소</span>
+                <span className="min-[375px]:hidden">저장소</span>
               </a>
             </div>
           </div>
@@ -127,7 +133,7 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
         
         {/* 통계 정보 */}
         <div className="text-center mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-100">
-          <p className="text-[10px] min-[375px]:text-xs sm:text-sm text-slate-500 font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+          <p className="text-[10px] min-[375px]:text-xs sm:text-sm text-slate-500 font-semibold text-center px-4">
             현재까지 <span className="bg-gradient-to-r from-blue-400/70 via-blue-500/70 to-indigo-500/70 bg-clip-text text-transparent">{totalIdeas.toLocaleString()}개의 아이디어</span>가 만들어졌습니다.
           </p>
         </div>

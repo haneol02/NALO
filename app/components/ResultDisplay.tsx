@@ -55,7 +55,7 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
     <div className="max-w-6xl mx-auto space-y-8">
       {/* 헤더 */}
       <div className="text-center">
-        <h2 className="text-xl min-[375px]:text-2xl sm:text-3xl font-bold text-slate-800 mb-4 whitespace-nowrap">
+        <h2 className="text-lg min-[375px]:text-xl sm:text-2xl md:text-3xl font-bold text-slate-800 mb-4 text-center px-4">
           당신만의 상세한 아이디어를 준비했습니다
         </h2>
         <div className="mb-2"></div>
@@ -281,9 +281,19 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                     <button
                       onClick={() => handleGenerateBusinessPlan(idea, index)}
                       disabled={isGeneratingPlan(idea.id)}
-                      className="btn-plan-generate w-full sm:w-auto"
+                      className="btn-plan-generate w-full sm:w-auto text-sm sm:text-base px-3 sm:px-6"
                     >
-                      {isGeneratingPlan(idea.id) ? '기획서 생성 중...' : '비즈니스 기획서 생성하기'}
+                      {isGeneratingPlan(idea.id) ? (
+                        <span>
+                          <span className="hidden min-[375px]:inline">기획서 생성 중...</span>
+                          <span className="min-[375px]:hidden">생성 중...</span>
+                        </span>
+                      ) : (
+                        <span>
+                          <span className="hidden min-[375px]:inline">비즈니스 기획서 생성하기</span>
+                          <span className="min-[375px]:hidden">기획서 생성</span>
+                        </span>
+                      )}
                     </button>
                   ) : (
                     <button
@@ -293,9 +303,10 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                           window.open(`/plan/${planId}`, '_blank', 'noopener,noreferrer');
                         }
                       }}
-                      className="btn-secondary w-full sm:w-auto"
+                      className="btn-secondary w-full sm:w-auto text-sm sm:text-base px-3 sm:px-6"
                     >
-                      기획서 보기
+                      <span className="hidden min-[375px]:inline">기획서 보기</span>
+                      <span className="min-[375px]:hidden">보기</span>
                     </button>
                   )}
                 </div>
@@ -313,9 +324,10 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
             onNewGeneration();
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className="btn-primary"
+          className="btn-primary text-sm sm:text-base px-4 sm:px-6"
         >
-          새로운 조건으로 생성하기
+          <span className="hidden min-[375px]:inline">새로운 조건으로 생성하기</span>
+          <span className="min-[375px]:hidden">새로 생성하기</span>
         </button>
         
         <div className="text-xs min-[375px]:text-sm text-slate-500 mt-6 text-center">

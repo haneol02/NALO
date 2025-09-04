@@ -6,19 +6,19 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "NALO(날로) - 날로 먹는 프로젝트 기획",
-  description: "3분 만에 완성하는 트렌드 기반 프로젝트 아이디어 생성 플랫폼. 완전 무료로 당신만의 창업 아이디어를 만나보세요.",
-  keywords: "프로젝트 아이디어, 창업 아이디어, 사이드프로젝트, AI 기획, 트렌드 분석, 무료 서비스",
+  description: "AI가 도와주는 스마트한 프로젝트 기획 솔루션. 완전 무료로 당신만의 창업 아이디어를 만나보세요.",
+  keywords: "프로젝트 아이디어, 창업 아이디어, 사이드프로젝트, AI 기획, 스마트 기획, 무료 서비스",
   authors: [{ name: "NALO Team" }],
   openGraph: {
     title: "NALO(날로) - 날로 먹는 프로젝트 기획",
-    description: "3분 만에 완성하는 트렌드 기반 프로젝트 아이디어 생성 플랫폼",
+    description: "AI가 도와주는 스마트한 프로젝트 기획 솔루션",
     type: "website",
     locale: "ko_KR",
   },
   twitter: {
     card: "summary_large_image",
     title: "NALO(날로) - 날로 먹는 프로젝트 기획",
-    description: "3분 만에 완성하는 트렌드 기반 프로젝트 아이디어 생성 플랫폼",
+    description: "AI가 도와주는 스마트한 프로젝트 기획 솔루션",
   },
   robots: {
     index: true,

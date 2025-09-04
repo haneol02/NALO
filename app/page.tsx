@@ -122,31 +122,27 @@ export default function HomePage() {
               <span className="gradient-text">NALO</span>
             </h1>
             <div className="mb-2"></div>
-            <p className="text-sm min-[375px]:text-base min-[425px]:text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl text-slate-700 mb-2 sm:mb-3 font-bold tracking-tight whitespace-nowrap">
+            <p className="text-sm min-[375px]:text-base min-[425px]:text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl text-slate-700 mb-2 sm:mb-3 font-bold tracking-tight">
               날로 먹는 프로젝트 기획
             </p>
             <div className="max-w-2xl mx-auto">
-              <p className="text-xs min-[375px]:text-sm min-[425px]:text-base sm:text-lg text-slate-600 leading-relaxed whitespace-nowrap">
+              <p className="text-xs min-[375px]:text-sm min-[425px]:text-base sm:text-lg text-slate-600 leading-relaxed text-center px-4">
                 AI가 도와주는 스마트한 프로젝트 기획 솔루션
               </p>
-              <div className="flex items-center justify-center gap-0.5 min-[375px]:gap-1 sm:gap-2 mt-4 text-[10px] min-[375px]:text-xs sm:text-sm text-slate-500 overflow-hidden max-w-[85%] mx-auto">
-                <div className="flex items-center gap-0.5 min-[375px]:gap-1 flex-shrink-0">
-                  <div className="flex items-center gap-0.5">
-                    <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full flex-shrink-0"></div>
-                    <span className="whitespace-nowrap">문장 입력</span>
-                  </div>
-                  <div className="w-1.5 min-[375px]:w-2 sm:w-3 h-px bg-slate-300 flex-shrink-0"></div>
+              <div className="flex items-center justify-center gap-1 min-[375px]:gap-2 sm:gap-3 mt-4 text-[9px] min-[375px]:text-[10px] sm:text-sm text-slate-500 px-4 flex-wrap">
+                <div className="flex items-center gap-1">
+                  <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full"></div>
+                  <span>문장 입력</span>
                 </div>
-                <div className="flex items-center gap-0.5 min-[375px]:gap-1 flex-shrink-0">
-                  <div className="flex items-center gap-0.5">
-                    <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
-                    <span className="whitespace-nowrap">AI 분석</span>
-                  </div>
-                  <div className="w-1.5 min-[375px]:w-2 sm:w-3 h-px bg-slate-300 flex-shrink-0"></div>
+                <div className="w-2 min-[375px]:w-3 sm:w-4 h-px bg-slate-300"></div>
+                <div className="flex items-center gap-1">
+                  <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full"></div>
+                  <span>AI 분석</span>
                 </div>
-                <div className="flex items-center gap-0.5 flex-shrink-0">
-                  <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
-                  <span className="whitespace-nowrap">기획서 완성</span>
+                <div className="w-2 min-[375px]:w-3 sm:w-4 h-px bg-slate-300"></div>
+                <div className="flex items-center gap-1">
+                  <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-600 rounded-full"></div>
+                  <span>기획서 완성</span>
                 </div>
               </div>
             </div>
@@ -223,11 +219,11 @@ export default function HomePage() {
                 <div className="absolute inset-2 animate-pulse rounded-full bg-gradient-to-r from-blue-400 to-white opacity-20"></div>
               </div>
               
-              <h3 className="text-lg min-[375px]:text-xl font-semibold text-slate-700 mb-2 whitespace-nowrap loading-pulse">
+              <h3 className="text-lg min-[375px]:text-xl font-semibold text-slate-700 mb-2 text-center loading-pulse">
                 아이디어를 생성하고 있습니다
               </h3>
               <div className="mb-2"></div>
-              <p className="text-xs min-[375px]:text-sm sm:text-base text-slate-500 whitespace-nowrap">
+              <p className="text-xs min-[375px]:text-sm sm:text-base text-slate-500 text-center">
                 AI가 최적의 아이디어를 준비 중입니다...
               </p>
               
@@ -262,7 +258,7 @@ export default function HomePage() {
                   <div className="w-24 h-24 bg-red-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
                     <Frown className="w-12 h-12 text-red-600" />
                   </div>
-                  <h3 className="text-xl min-[375px]:text-2xl font-bold text-slate-800 mb-4 whitespace-nowrap">
+                  <h3 className="text-xl min-[375px]:text-2xl font-bold text-slate-800 mb-4 text-center">
                     아이디어 생성에 실패했습니다
                   </h3>
                   <div className="mb-2"></div>
