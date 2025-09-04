@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Tag, DollarSign, FileText } from 'lucide-react';
+import { Calendar, Tag, DollarSign, FileText, Home } from 'lucide-react';
 
 interface IdeaPlan {
   id: string;
@@ -80,14 +80,23 @@ export default function IdeasPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 page-transition">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center py-12">
-            <div className="inline-block relative mb-6">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent loading-pulse"></div>
-              <div className="absolute inset-2 animate-pulse rounded-full bg-gradient-to-r from-blue-400 to-white opacity-20"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 page-transition">
+        {/* 헤더 바 */}
+        <header className="bg-white border-b border-slate-200 px-4 py-4">
+          <div className="max-w-6xl mx-auto flex items-center justify-center">
+            <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+          </div>
+        </header>
+
+        <div className="p-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center py-12">
+              <div className="inline-block relative mb-6">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent loading-pulse"></div>
+                <div className="absolute inset-2 animate-pulse rounded-full bg-gradient-to-r from-blue-400 to-white opacity-20"></div>
+              </div>
+              <p className="text-slate-600 loading-pulse">아이디어 목록을 불러오는 중...</p>
             </div>
-            <p className="text-slate-600 loading-pulse">아이디어 목록을 불러오는 중...</p>
           </div>
         </div>
       </div>
@@ -95,22 +104,21 @@ export default function IdeasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 page-transition no-select">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-6 sm:mb-8">
-          <div className="flex justify-between items-center mb-4 sm:mb-6">
-            <a 
-              href="/" 
-              className="btn-secondary btn-click inline-flex items-center gap-2 text-sm sm:text-base"
-            >
-              ← 홈으로
-            </a>
-            <div></div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 page-transition no-select">
+      {/* 헤더 바 */}
+      <header className="bg-white border-b border-slate-200 px-4 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-center">
+          <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+        </div>
+      </header>
+
+      <div className="max-w-6xl mx-auto pb-16 p-4">
+
+        <header className="mb-6 sm:mb-8 mt-8 sm:mt-12">
           <div className="text-center">
-            <h1 className="text-2xl sm:text-4xl font-bold text-slate-800 mb-3 sm:mb-4">
+            <h2 className="text-2xl sm:text-4xl font-bold text-slate-800 mb-3 sm:mb-4">
               기획서 저장소
-            </h1>
+            </h2>
             <div className="mb-2"></div>
             <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto px-4">
               생성된 프로젝트 아이디어들의 상세한 기획서를 확인하세요
@@ -140,7 +148,7 @@ export default function IdeasPage() {
         ) : (
           <div className="grid gap-6">
             {ideas.map((idea, index) => (
-              <div key={idea.id} className="card card-hover page-transition" style={{ animationDelay: `${index * 0.1}s` }}>
+              <div key={idea.id} className="card card-hover page-transition mt-6 sm:mt-8 md:mt-12" style={{ animationDelay: `${index * 0.1}s` }}>
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg sm:text-xl font-semibold text-slate-800 mb-2">
@@ -193,6 +201,19 @@ export default function IdeasPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* 플로팅 네비게이션 - 모바일과 PC 모두 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 z-50">
+        <div className="flex justify-center max-w-md mx-auto">
+          <a 
+            href="/" 
+            className="btn-secondary btn-click inline-flex items-center gap-2 px-6 py-3 justify-center"
+          >
+            <Home className="w-4 h-4" />
+            <span className="text-xs">홈으로</span>
+          </a>
+        </div>
       </div>
     </div>
   );

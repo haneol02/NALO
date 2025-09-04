@@ -54,14 +54,12 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* 헤더 */}
-      <div className="text-center">
-        <h2 className="text-lg min-[375px]:text-xl sm:text-2xl md:text-3xl font-bold text-slate-800 mb-4 text-center px-4">
+      <div className="text-center mt-6 sm:mt-8 md:mt-12">
+        <h2 className="text-base min-[375px]:text-lg sm:text-2xl md:text-3xl font-bold text-slate-800 mb-2 text-center px-4">
           당신만의 상세한 아이디어를 준비했습니다
         </h2>
-        <div className="mb-2"></div>
-        <p className="text-sm min-[375px]:text-base text-slate-600 text-center">
-          생성된 아이디어가 마음에 들면 비즈니스 기획서를 생성하거나,<br className="sm:hidden" />
-          <span className="hidden sm:inline"> </span>저장해보세요
+        <p className="text-xs min-[375px]:text-sm text-slate-600 text-center">
+          아이디어가 마음에 들면 기획서를 생성해보세요.
         </p>
       </div>
 
@@ -69,7 +67,7 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
       <div className="space-y-8">
         {ideas.map((idea, index) => {
           return (
-            <div key={index} className="card card-hover page-transition" style={{ animationDelay: `${index * 0.1}s` }}>
+            <div key={index} className="card card-hover page-transition mt-6 sm:mt-8 md:mt-12" style={{ animationDelay: `${index * 0.1}s` }}>
               {/* 카드 헤더 */}
               <div className="flex justify-between items-start mb-6">
                 <div className="flex-1">
@@ -79,7 +77,7 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                       생성된 아이디어
                     </span>
                   </div>
-                  <h3 className="text-2xl font-bold text-slate-800">
+                  <h3 className="text-lg sm:text-2xl font-bold text-slate-800">
                     {idea.title}
                   </h3>
                   <div className="mb-2"></div>
@@ -95,11 +93,11 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                     <h4 className="font-semibold text-slate-800 mb-2">핵심 요약</h4>
                     <div className="mb-1"></div>
                     {idea.summary && (
-                      <p className="text-blue-700 font-medium leading-relaxed mb-2 selectable">
+                      <p className="text-sm sm:text-base text-blue-700 font-medium leading-relaxed mb-2 selectable">
                         {idea.summary}
                       </p>
                     )}
-                    <p className="text-slate-700 leading-relaxed mb-4 selectable">
+                    <p className="text-xs sm:text-base text-slate-700 leading-relaxed mb-4 selectable">
                       {idea.description}
                     </p>
                     {idea.coretech && idea.coretech.length > 0 && (
@@ -111,7 +109,7 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                         ))}
                       </div>
                     )}
-                    <div className="flex items-center gap-4 text-sm text-slate-600 mb-4">
+                    <div className="flex items-center gap-4 text-xs sm:text-sm text-slate-600 mb-4">
                       {idea.estimatedCost && (
                         <span>예상 비용: <strong className="text-blue-600">{idea.estimatedCost}만원</strong></span>
                       )}
@@ -126,10 +124,10 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                       <div className="mb-4">
                         <div className="flex items-center gap-2 mb-2">
                           <Wrench className="w-5 h-5 text-violet-600" />
-                          <h5 className="font-semibold text-slate-800">기술 스택</h5>
+                          <h5 className="text-sm font-semibold text-slate-800">기술 스택</h5>
                         </div>
                         <div className="mb-1"></div>
-                        <p className="text-slate-700 bg-slate-50 p-3 rounded-lg selectable">{idea.techStack}</p>
+                        <p className="text-xs sm:text-sm text-slate-700 bg-slate-50 p-3 rounded-lg selectable">{idea.techStack}</p>
                       </div>
                     )}
 
@@ -138,14 +136,14 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                       <div className="mb-4">
                         <div className="flex items-center gap-2 mb-2">
                           <Sparkles className="w-5 h-5 text-blue-600" />
-                          <h5 className="font-semibold text-slate-800">핵심 기능</h5>
+                          <h5 className="text-sm font-semibold text-slate-800">핵심 기능</h5>
                         </div>
                         <div className="mb-1"></div>
                         <ul className="space-y-2">
                           {idea.keyFeatures.map((feature, idx) => (
                             <li key={idx} className="flex items-start gap-2">
                               <div className="w-1 h-1 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-                              <span className="text-slate-700 selectable">{feature}</span>
+                              <span className="text-xs sm:text-sm text-slate-700 selectable">{feature}</span>
                             </li>
                           ))}
                         </ul>
@@ -157,10 +155,10 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                       <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-500 mb-4">
                         <div className="flex items-center gap-2 mb-2">
                           <Rocket className="w-5 h-5 text-blue-600" />
-                          <h5 className="font-semibold text-blue-800">첫 번째 실행 단계</h5>
+                          <h5 className="text-sm font-semibold text-blue-800">첫 번째 실행 단계</h5>
                         </div>
                         <div className="mb-1"></div>
-                        <p className="text-blue-700 selectable">{idea.firstStep}</p>
+                        <p className="text-xs sm:text-sm text-blue-700 selectable">{idea.firstStep}</p>
                       </div>
                     )}
                   </div>
@@ -173,13 +171,13 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                 <div className="bg-slate-50 rounded-lg p-6 mb-6">
                   <div className="flex items-center gap-2 mb-4">
                     <BarChart3 className="w-5 h-5 text-slate-600" />
-                    <h4 className="font-semibold text-slate-800">실현 가능성 분석</h4>
+                    <h4 className="text-sm font-semibold text-slate-800">실현 가능성 분석</h4>
                   </div>
                   <div className="mb-1"></div>
                   <div className="grid md:grid-cols-3 gap-6">
                     {idea.difficulty && (
                       <div className="text-center">
-                        <div className="text-sm text-slate-600 mb-2">기술 난이도</div>
+                        <div className="text-xs sm:text-sm text-slate-600 mb-2">기술 난이도</div>
                         <div className="flex justify-center mb-1">
                           {renderStars(idea.difficulty)}
                         </div>
@@ -193,7 +191,7 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                     )}
                     {idea.marketPotential && (
                       <div className="text-center">
-                        <div className="text-sm text-slate-600 mb-2">시장 잠재력</div>
+                        <div className="text-xs sm:text-sm text-slate-600 mb-2">시장 잠재력</div>
                         <div className="flex justify-center mb-1">
                           {renderStars(idea.marketPotential)}
                         </div>
@@ -207,7 +205,7 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                     )}
                     {idea.competition && (
                       <div className="text-center">
-                        <div className="text-sm text-slate-600 mb-2">경쟁 우위도</div>
+                        <div className="text-xs sm:text-sm text-slate-600 mb-2">경쟁 우위도</div>
                         <div className="flex justify-center mb-1">
                           {renderStars(5 - idea.competition)}
                         </div>
@@ -233,14 +231,14 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                         <div>
                           <div className="flex items-center gap-2 mb-3">
                             <AlertTriangle className="w-5 h-5 text-red-600" />
-                            <h4 className="font-semibold text-red-800">예상 도전과제</h4>
+                            <h4 className="text-sm font-semibold text-red-800">예상 도전과제</h4>
                           </div>
                           <div className="mb-1"></div>
                           <ul className="space-y-2">
                             {idea.challenges.map((challenge, idx) => (
                               <li key={idx} className="flex items-start gap-2">
                                 <div className="w-1 h-1 bg-red-400 rounded-full mt-2 flex-shrink-0"></div>
-                                <span className="text-sm text-red-700 selectable">{challenge}</span>
+                                <span className="text-xs sm:text-sm text-red-700 selectable">{challenge}</span>
                               </li>
                             ))}
                           </ul>
@@ -256,14 +254,14 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                         <div>
                           <div className="flex items-center gap-2 mb-3">
                             <Target className="w-5 h-5 text-green-600" />
-                            <h4 className="font-semibold text-green-800">성공 요인</h4>
+                            <h4 className="text-sm font-semibold text-green-800">성공 요인</h4>
                           </div>
                           <div className="mb-1"></div>
                           <ul className="space-y-2">
                             {idea.successFactors.map((factor, idx) => (
                               <li key={idx} className="flex items-start gap-2">
                                 <div className="w-1 h-1 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                                <span className="text-sm text-green-700 selectable">{factor}</span>
+                                <span className="text-xs sm:text-sm text-green-700 selectable">{factor}</span>
                               </li>
                             ))}
                           </ul>
@@ -290,7 +288,7 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                         </span>
                       ) : (
                         <span>
-                          <span className="hidden min-[375px]:inline">비즈니스 기획서 생성하기</span>
+                          <span className="hidden min-[375px]:inline">기획서 생성하기</span>
                           <span className="min-[375px]:hidden">기획서 생성</span>
                         </span>
                       )}
@@ -329,17 +327,6 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
           <span className="hidden min-[375px]:inline">새로운 조건으로 생성하기</span>
           <span className="min-[375px]:hidden">새로 생성하기</span>
         </button>
-        
-        <div className="text-xs min-[375px]:text-sm text-slate-500 mt-6 text-center">
-          <p className="mb-1">
-            생성된 아이디어가 마음에 들면 기획서를 생성하거나<br className="sm:hidden" />
-            <span className="hidden sm:inline"> </span>친구들과 공유해보세요
-          </p>
-          <p>
-            다른 아이디어가 필요하시면<br className="sm:hidden" />
-            <span className="hidden sm:inline"> </span>새로운 주제로 다시 생성해보세요
-          </p>
-        </div>
       </div>
     </div>
   );

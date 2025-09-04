@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Lightbulb, Play, Search, RotateCcw } from 'lucide-react';
+import { Lightbulb, Play, Search, Home } from 'lucide-react';
 
 interface SimpleTopic {
   id: string;
@@ -11,6 +11,8 @@ interface SimpleTopic {
   level: number;
   parentId?: string;
   isExpanded?: boolean;
+  expandedKeywords?: string[];
+  keywords?: string[];
 }
 
 interface SimpleTopicExplorerProps {
@@ -66,7 +68,8 @@ export default function SimpleTopicExplorer({
         const numberedTopics = data.topics.map((topic: SimpleTopic, index: number) => ({
           ...topic,
           id: `topic_${index + 1}`,
-          level: 1
+          level: 1,
+          keywords: initialKeywords
         }));
         setCurrentTopics(numberedTopics);
         setTopicCounter(numberedTopics.length + 1);
@@ -120,7 +123,8 @@ export default function SimpleTopicExplorer({
   const handleTopicExpansion = async (topic: SimpleTopic, customKeywords?: string) => {
     setExpandingTopicId(topic.id);
     
-    let expandKeywords = currentKeywords;
+    // 각 주제마다 독립적인 키워드를 사용 - 기본 키워드와 사용자 입력만 결합
+    let expandKeywords = initialKeywords; // currentKeywords 대신 initialKeywords 사용
     const keywordsToUse = customKeywords || additionalKeywords;
 
 
@@ -137,15 +141,15 @@ export default function SimpleTopicExplorer({
 
         if (keywordResponse.ok) {
           const keywordData = await keywordResponse.json();
-          expandKeywords = [...currentKeywords, ...keywordData.keywords];
+          expandKeywords = [...initialKeywords, ...keywordData.keywords];
         } else {
           // 키워드 추출 실패시 기본값 사용
-          expandKeywords = [...currentKeywords, ...keywordsToUse.split(',').map(k => k.trim()).filter(k => k)];
+          expandKeywords = [...initialKeywords, ...keywordsToUse.split(',').map(k => k.trim()).filter(k => k)];
         }
       } catch (error) {
         console.error('키워드 추출 오류:', error);
         // 에러 발생시 기본값 사용
-        expandKeywords = [...currentKeywords, ...additionalKeywords.split(',').map(k => k.trim()).filter(k => k)];
+        expandKeywords = [...initialKeywords, ...keywordsToUse.split(',').map(k => k.trim()).filter(k => k)];
       }
     }
 
@@ -171,13 +175,18 @@ export default function SimpleTopicExplorer({
 
       const data = await response.json();
       if (data.success && data.topics) {
+        // 확장된 키워드 정보 저장
+        const expandedKeywords = keywordsToUse.trim() ? expandKeywords : null;
+        
         // 기존 주제들에 새로운 확장 주제들을 추가
         const newTopics = data.topics.map((newTopic: SimpleTopic, index: number) => ({
           ...newTopic,
           id: `topic_${topicCounter + index}`,
           parentId: topic.id,
           isExpanded: true,
-          level: topic.level + 1
+          level: topic.level + 1,
+          expandedKeywords: expandedKeywords, // 확장에 사용된 키워드 정보 저장
+          keywords: expandedKeywords || initialKeywords // 확장된 키워드 또는 초기 키워드
         }));
         
         // 선택한 주제의 바로 다음 위치에 확장된 주제들을 삽입
@@ -189,12 +198,9 @@ export default function SimpleTopicExplorer({
         });
         setTopicCounter(prev => prev + newTopics.length);
         
-        // 키워드 업데이트
-        if (keywordsToUse.trim()) {
-          setCurrentKeywords(expandKeywords);
-          if (!customKeywords) {
-            setAdditionalKeywords(''); // customKeywords가 없을 때만 초기화
-          }
+        // 전역 키워드는 업데이트하지 않음 - 각 확장이 독립적으로 동작
+        if (!customKeywords && keywordsToUse.trim()) {
+          setAdditionalKeywords(''); // customKeywords가 없을 때만 초기화
         }
       }
     } catch (error) {
@@ -206,12 +212,8 @@ export default function SimpleTopicExplorer({
     }
   };
 
-  const handleResetTopics = () => {
-    setCurrentKeywords(initialKeywords);
-    setSelectedPath([]);
-    setAdditionalKeywords('');
-    setTopicCounter(1);
-    loadInitialTopics();
+  const handleGoHome = () => {
+    window.location.href = '/';
   };
 
   // 사용자 탐색 패턴 분석 함수
@@ -235,6 +237,8 @@ export default function SimpleTopicExplorer({
     
     return baseTopics.map((baseTopic) => {
       const childTopics = currentTopics.filter(topic => topic.parentId === baseTopic.id);
+      // 확장된 키워드를 찾습니다 (맨 처음 하위 주제에서)
+      const expandedKeywords = childTopics.length > 0 ? childTopics[0].expandedKeywords : null;
       
       return (
         <div key={baseTopic.id} className="space-y-4">
@@ -248,6 +252,20 @@ export default function SimpleTopicExplorer({
             isExpanding={expandingTopicId === baseTopic.id}
             allTopics={currentTopics}
           />
+          
+          {/* 확장된 키워드 표시 */}
+          {expandedKeywords && expandedKeywords.length > 0 && (
+            <div className="ml-4 sm:ml-8 mb-3">
+              <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-50 to-slate-100 rounded-lg mt-3 sm:mt-4">
+                <span className="text-slate-600 font-medium text-xs">확장:</span>
+                {expandedKeywords.map((keyword, index) => (
+                  <span key={index} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs leading-tight whitespace-nowrap">
+                    {keyword}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           
           {/* 하위 주제들 */}
           {childTopics.length > 0 && (
@@ -285,15 +303,15 @@ export default function SimpleTopicExplorer({
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto pb-20 sm:pb-0">
       {/* 헤더 */}
-      <div className="text-center mb-8">
-        <h2 className="text-xl min-[375px]:text-2xl sm:text-3xl font-bold text-slate-800 mb-2 flex items-center justify-center gap-2 sm:gap-3 text-center px-4">
+      <div className="text-center mb-8 mt-6 sm:mt-8 md:mt-12">
+        <h2 className="text-base min-[375px]:text-lg sm:text-3xl font-bold text-slate-800 mb-2 flex items-center justify-center gap-2 sm:gap-3 text-center px-4">
           <Lightbulb className="w-6 sm:w-8 h-6 sm:h-8 text-blue-600" />
           <span>프로젝트 아이디어 탐색</span>
         </h2>
         <div className="mb-2"></div>
-        <p className="text-sm min-[375px]:text-base sm:text-lg text-slate-600 text-center px-4">
+        <p className="text-xs min-[375px]:text-sm sm:text-lg text-slate-600 text-center px-4">
           원하는 주제로 바로 아이디어 생성하거나,<br className="sm:hidden" />
           <span className="hidden sm:inline"> </span>확장 버튼으로 더 많은 주제를 탐색해보세요
         </p>
@@ -301,12 +319,11 @@ export default function SimpleTopicExplorer({
 
       {/* 현재 키워드 표시 */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-50 rounded-lg">
-          <span className="text-blue-800 font-medium">탐색 키워드:</span>
+        <div className="flex flex-wrap justify-center items-center gap-1.5 px-4 py-3 bg-gradient-to-r from-blue-50 to-slate-100 rounded-lg mt-4 sm:mt-6 max-w-2xl mx-auto">
+          <span className="text-slate-600 font-medium text-xs">키워드:</span>
           {currentKeywords.map((keyword, index) => (
-            <span key={index} className="text-blue-700">
+            <span key={index} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs leading-tight whitespace-nowrap">
               {keyword}
-              {index < currentKeywords.length - 1 && <span className="mx-1">•</span>}
             </span>
           ))}
         </div>
@@ -318,15 +335,15 @@ export default function SimpleTopicExplorer({
         {renderTopicsHierarchy()}
       </div>
 
-      {/* 하단 네비게이션 */}
-      <div className="flex justify-center items-center space-x-4">
+      {/* 데스크톱 네비게이션 */}
+      <div className="hidden sm:flex justify-center items-center space-x-4">
         <button
-          onClick={handleResetTopics}
+          onClick={handleGoHome}
           className="btn-secondary btn-click px-6 py-3 flex items-center gap-2"
           disabled={isLoading}
         >
-          <RotateCcw className="w-4 h-4" />
-          처음부터 다시
+          <Home className="w-4 h-4" />
+          홈으로
         </button>
         
         {currentTopics.length > 3 && (
@@ -334,6 +351,20 @@ export default function SimpleTopicExplorer({
             {currentTopics.length}개 주제가 생성되었습니다
           </p>
         )}
+      </div>
+
+      {/* 모바일 플로팅 네비게이션 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 sm:hidden z-50">
+        <div className="flex justify-center max-w-md mx-auto">
+          <button
+            onClick={handleGoHome}
+            className="btn-secondary btn-click inline-flex items-center gap-2 px-6 py-3 justify-center"
+            disabled={isLoading}
+          >
+            <Home className="w-4 h-4" />
+            <span className="text-xs">홈으로</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -366,7 +397,7 @@ function TopicCard({ topic, onDirectGenerate, onExpand, isExpanding, allTopics }
     }
   };
   return (
-    <div className={`border-2 rounded-xl bg-white card-hover transition-all duration-200 ${
+    <div className={`border-2 rounded-xl bg-white card-hover transition-all duration-200 mt-6 sm:mt-8 md:mt-12 ${
       topic.parentId 
         ? 'border-blue-200 bg-blue-50/30 shadow-sm' 
         : 'border-slate-200 hover:shadow-lg'
@@ -387,30 +418,44 @@ function TopicCard({ topic, onDirectGenerate, onExpand, isExpanding, allTopics }
           </div>
           
           <div className="flex-1">
-            <h3 className={`text-lg sm:text-xl font-semibold mb-2 ${
+            <h3 className={`text-sm sm:text-xl font-semibold mb-2 ${
               topic.parentId ? 'text-blue-800' : 'text-slate-800'
             }`}>
               {topic.title}
             </h3>
-            <p className={`text-sm sm:text-base mb-4 ${
+            <p className={`text-xs sm:text-base mb-4 ${
               topic.parentId ? 'text-blue-700' : 'text-slate-600'
             }`}>
               {topic.description}
             </p>
             
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-              <div className="flex items-center space-x-2">
-                <span className={`px-2 py-1 rounded text-sm ${
-                  topic.parentId 
-                    ? 'bg-blue-100 text-blue-800' 
-                    : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {topic.category}
-                </span>
-                {topic.parentId && (
-                  <span className="text-blue-500 text-sm">
-                    확장 주제
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center space-x-2">
+                  <span className={`px-2 py-1 rounded text-sm ${
+                    topic.parentId 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {topic.category}
                   </span>
+                  {topic.parentId && (
+                    <span className="text-blue-500 text-sm">
+                      확장 주제
+                    </span>
+                  )}
+                </div>
+                {topic.keywords && topic.keywords.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {topic.keywords.map((keyword, index) => (
+                      <span 
+                        key={index}
+                        className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs leading-tight whitespace-nowrap"
+                      >
+                        {keyword}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
               

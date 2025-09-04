@@ -67,7 +67,7 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="card card-hover">
+      <div className="card card-hover mt-6 sm:mt-8 md:mt-12">
         <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
           <div className="space-y-3 sm:space-y-4">
             <label htmlFor="textInput" className="block text-base sm:text-lg font-semibold text-slate-800">

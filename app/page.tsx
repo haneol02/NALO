@@ -112,7 +112,6 @@ export default function HomePage() {
       <header className="relative text-center py-12 sm:py-20 px-4 bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden">
         {/* Background decoration */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100/20 via-transparent to-transparent"></div>
-        <div className="mb-4"></div>
         
         <div className="relative max-w-4xl mx-auto">
           <div className="mb-12"></div>
