@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Lightbulb, Play, Search, Home } from 'lucide-react';
 
 interface SimpleTopic {
@@ -32,17 +32,7 @@ export default function SimpleTopicExplorer({
   const [additionalKeywords, setAdditionalKeywords] = useState<string>('');
   const [topicCounter, setTopicCounter] = useState<number>(1);
 
-  // 초기 주제 로드
-  useEffect(() => {
-    loadInitialTopics();
-  }, []);
-
-  // 주제 상태 모니터링 (디버깅용)
-  useEffect(() => {
-    console.log('currentTopics 상태 업데이트:', currentTopics);
-  }, [currentTopics]);
-
-  const loadInitialTopics = async () => {
+  const loadInitialTopics = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/topics', {
@@ -86,7 +76,17 @@ export default function SimpleTopicExplorer({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [initialKeywords]);
+
+  // 초기 주제 로드
+  useEffect(() => {
+    loadInitialTopics();
+  }, [loadInitialTopics]);
+
+  // 주제 상태 모니터링 (디버깅용)
+  useEffect(() => {
+    console.log('currentTopics 상태 업데이트:', currentTopics);
+  }, [currentTopics]);
 
   const handleDirectIdeaGeneration = (topic: SimpleTopic) => {
     const newPath = [...selectedPath, topic.title];

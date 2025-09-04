@@ -225,7 +225,7 @@ export default function BusinessPlanPage() {
       }
       
       // 페이지 헤더바만 숨기기
-      const pageHeader = document.querySelector('body > div > header');
+      const pageHeader = document.querySelector('body > div > header') as HTMLElement;
       const originalPageHeaderDisplay = pageHeader?.style.display;
       
       if (pageHeader) pageHeader.style.display = 'none';
