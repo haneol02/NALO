@@ -500,7 +500,7 @@ export default function BusinessPlanPage() {
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">작성일</h3>
                 <div className="mb-1"></div>
-                <p className="text-xs sm:text-sm text-slate-600">{plan.created_date}</p>
+                <p className="text-xs sm:text-sm text-slate-600">{formatDate(plan.created_date)}</p>
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">프로젝트 유형</h3>
