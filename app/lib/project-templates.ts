@@ -135,7 +135,7 @@ export const IDEA_PLAN_PROMPT = `
   "ideaPlan": {
     "project_name": "아이디어의 원래 제목을 그대로 사용하여 일관성을 유지 (입력받은 title 필드 값과 동일하게 유지)",
     "service_summary": "아이디어의 핵심 가치를 한 문장으로 명확하게 요약",
-    "created_date": "2025-01-14",
+    "created_date": new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '.'),
     "project_type": "프로젝트 유형을 구체적으로 분류 (웹서비스, 모바일앱, SaaS, 플랫폼 등)",
     "core_idea": "핵심 아이디어와 가치를 200-400자로 상세하게 설명하여 프로젝트의 본질과 차별점을 명확히 제시",
     "background": "프로젝트 배경과 필요성을 200-400자로 구체적으로 설명하며 현재 시장 상황, 사용자 니즈, 해결해야 할 문제의 맥락을 포함하여 작성",
