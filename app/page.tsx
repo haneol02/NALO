@@ -77,10 +77,10 @@ export default function HomePage() {
       const ideasWithIds = data.ideas?.map((idea: any, index: number) => ({
         ...idea,
         id: `idea_${Date.now()}_${index}`,
-        // 키워드와 검색 정보 추가
-        keywords: contextToUse.keywords || selectedKeywords,
+        // 키워드와 검색 정보 추가 - 일관성을 위해 selectedKeywords 우선 사용
+        keywords: selectedKeywords,
         searchQuery: contextToUse.finalTopic || '',
-        input_keywords: contextToUse.keywords || selectedKeywords,
+        input_keywords: selectedKeywords,
         search_query: contextToUse.finalTopic || ''
       })) || [];
       

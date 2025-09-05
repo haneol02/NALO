@@ -28,12 +28,19 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       throw new Error('기획서 생성에 실패했습니다.');
     }
     
+    // 현재 날짜 생성 (YYYY.MM.DD 형식)
+    const currentDate = new Date().toLocaleDateString('ko-KR', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit' 
+    }).replace(/\//g, '.');
+
     // DB에 기획서 저장 - 모든 필드 포함, 더미 데이터 대신 빈 값 처리
     const planData = {
       // 기본 정보
       project_name: planResult.ideaPlan.project_name || null,
       service_summary: planResult.ideaPlan.service_summary || null,
-      created_date: planResult.ideaPlan.created_date || new Date().toISOString().split('T')[0],
+      created_date: currentDate, // 서버에서 현재 날짜 직접 설정
       project_type: planResult.ideaPlan.project_type || null,
       core_idea: planResult.ideaPlan.core_idea || null,
       background: planResult.ideaPlan.background || null,
