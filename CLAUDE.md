@@ -1,0 +1,217 @@
+# NALO 프로젝트 설정
+
+## 프로젝트 개요
+- **이름**: NALO (날로 먹는 프로젝트 기획)
+- **목적**: 3분 만에 완성하는 트렌드 기반 프로젝트 아이디어 생성 플랫폼
+- **타겟**: 개발자, 기획자, 창업자를 위한 완전 무료 서비스
+
+## 기술 스택
+
+### 프론트엔드
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript 5.0+
+- **Styling**: Tailwind CSS 3.4
+- **Icons**: Lucide React
+- **UI**: Custom Components
+
+### 백엔드
+- **API**: Next.js API Routes (서버리스)
+- **Database**: Supabase (PostgreSQL)
+- **AI**: OpenAI GPT-3.5-turbo
+- **Search**: DuckDuckGo Search API
+
+### 라이브러리
+- **PDF 생성**: jspdf + html2canvas
+- **HTTP Client**: Built-in fetch
+- **Utils**: clsx, tailwind-merge
+
+## 개발 환경
+
+### 필수 명령어
+- **개발 서버**: `npm run dev`
+- **빌드**: `npm run build`  
+- **프로덕션 서버**: `npm run start`
+- **린트**: `npm run lint`
+
+### 환경 변수
+```env
+OPENAI_API_KEY=sk-your-api-key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+## 코딩 규칙
+
+### TypeScript 설정
+- **Strict 모드** 사용
+- 모든 컴포넌트는 **함수형** 컴포넌트
+- **Interface**는 대문자로 시작 (예: `IdeaPlan`)
+- **Props type**은 컴포넌트명 + Props (예: `IdeasPageProps`)
+
+### React 컴포넌트
+- **'use client'** 지시어 필요시 파일 최상단 명시
+- **useState, useEffect** 등 훅은 컴포넌트 최상단에 배치
+- **Event handler**는 handle 접두사 사용 (예: `handlePageChange`)
+
+### 스타일링
+- **Tailwind CSS** 유틸리티 클래스 우선 사용
+- **반응형 디자인** 필수 (sm, md, lg 브레이크포인트)
+- **커스텀 클래스**: globals.css에 정의된 것만 사용
+  - `.card`, `.btn-primary`, `.btn-secondary`, `.gradient-text` 등
+
+### 파일 구조
+```
+app/
+├── api/                 # API 라우트
+├── components/          # 재사용 컴포넌트
+├── hooks/              # 커스텀 훅
+├── lib/                # 유틸리티, 템플릿, 설정
+├── ideas/              # 아이디어 목록 페이지
+├── plan/[id]/          # 기획서 상세 페이지
+├── globals.css         # 글로벌 스타일
+├── layout.tsx          # 루트 레이아웃
+└── page.tsx           # 홈페이지
+```
+
+## API 설계
+
+### 응답 형식
+```typescript
+// 성공 응답
+{
+  success: true,
+  data: any,
+  message?: string
+}
+
+// 실패 응답  
+{
+  success: false,
+  error: string,
+  details?: any
+}
+```
+
+### 주요 API 엔드포인트
+- `/api/generate` - 아이디어 생성
+- `/api/ideas` - 저장된 아이디어 조회/수정
+- `/api/ideas/[id]/plan` - 기획서 생성
+- `/api/topics` - 트렌드 키워드 조회
+- `/api/extract-keywords` - 키워드 추출
+
+## 데이터베이스
+
+### 주요 테이블
+- **idea_plans**: 생성된 기획서 저장
+- **trends**: 트렌드 키워드 캐싱
+- **usage_logs**: API 사용량 추적
+
+### 명명 규칙
+- 테이블명: snake_case
+- 컬럼명: snake_case
+- Primary Key: id (SERIAL)
+- Timestamp: created_at, updated_at
+
+## UI/UX 가이드라인
+
+### 디자인 시스템
+- **색상**: Blue 계열 (blue-600, blue-50 등)
+- **폰트**: 시스템 폰트 스택
+- **간격**: Tailwind spacing (p-4, m-6 등)
+- **그림자**: shadow-lg, shadow-xl 사용
+
+### 반응형 설계
+- **모바일 우선** (Mobile First)
+- **브레이크포인트**: sm(640px), md(768px), lg(1024px)
+- **플로팅 네비게이션**: 모바일에서 하단 고정
+
+### 사용자 경험
+- **로딩 상태** 표시 필수
+- **에러 처리** 사용자 친화적 메시지
+- **페이지네이션**: 6개 아이템씩
+- **애니메이션**: page-transition, card-hover 클래스
+
+## 성능 최적화
+
+### 이미지 최적화
+- Next.js Image 컴포넌트 사용
+- WebP 포맷 우선
+- Lazy loading 적용
+
+### 번들 최적화
+- 동적 import 사용 (PDF 생성 라이브러리 등)
+- Tree shaking 적용
+- 코드 스플리팅
+
+## 보안 및 모범 사례
+
+### API 보안
+- 환경 변수로 민감 정보 관리
+- Rate limiting 구현 (토큰 사용량 제한)
+- 입력값 검증 및 sanitization
+
+### 코드 품질
+- **린트 규칙** 준수
+- **타입 안전성** 보장
+- **에러 바운더리** 적용
+- **로깅** 시스템 활용
+
+## 배포 및 운영
+
+### 배포 환경
+- **호스팅**: Vercel
+- **데이터베이스**: Supabase
+- **도메인**: Custom domain 설정 가능
+
+### 모니터링
+- Vercel Analytics
+- OpenAI API 사용량 추적
+- 에러 로깅 및 알림
+
+## 자주 사용하는 패턴
+
+### 데이터 fetching
+```typescript
+const [data, setData] = useState<Type[]>([]);
+const [loading, setLoading] = useState(true);
+
+const fetchData = async () => {
+  try {
+    const response = await fetch('/api/endpoint');
+    const result = await response.json();
+    if (result.success) {
+      setData(result.data);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+### 페이지네이션
+```typescript
+const [currentPage, setCurrentPage] = useState(1);
+const itemsPerPage = 6;
+const totalPages = Math.ceil(items.length / itemsPerPage);
+const currentItems = items.slice(
+  (currentPage - 1) * itemsPerPage, 
+  currentPage * itemsPerPage
+);
+```
+
+### 한국어 날짜 포맷
+```typescript
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('ko-KR');
+};
+```
+
+## 주의사항
+- **한글 주석** 허용 및 권장
+- **console.log** 프로덕션에서 제거
+- **민감 정보** 절대 하드코딩 금지
+- **API 응답 형식** 일관성 유지
+- **에러 처리** 사용자 친화적으로
+- **로딩 상태** 모든 비동기 작업에 적용
