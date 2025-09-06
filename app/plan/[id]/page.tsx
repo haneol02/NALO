@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import { createClient } from '@/app/lib/supabase/client';
 import { 
   AlertTriangle,
   Calendar,
@@ -22,7 +23,8 @@ import {
   CheckCircle,
   Home,
   ArrowLeft,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react';
 
 interface IdeaPlan {
@@ -88,6 +90,10 @@ export default function BusinessPlanPage() {
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   const fetchPlan = useCallback(async () => {
     try {
@@ -116,6 +122,15 @@ export default function BusinessPlanPage() {
 
   useEffect(() => {
     fetchPlan();
+    
+    // 현재 사용자 정보 가져오기
+    const fetchUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    
+    fetchUser();
   }, [fetchPlan]);
 
   // 외부 클릭으로 메뉴 닫기
@@ -127,16 +142,19 @@ export default function BusinessPlanPage() {
       if (downloadMenuOpen && !(event.target as Element).closest('.download-menu-container')) {
         setDownloadMenuOpen(false);
       }
+      if (moreMenuOpen && !(event.target as Element).closest('.more-menu-container')) {
+        setMoreMenuOpen(false);
+      }
     };
 
-    if (shareMenuOpen || downloadMenuOpen) {
+    if (shareMenuOpen || downloadMenuOpen || moreMenuOpen) {
       document.addEventListener('click', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [shareMenuOpen, downloadMenuOpen]);
+  }, [shareMenuOpen, downloadMenuOpen, moreMenuOpen]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR');
@@ -369,6 +387,33 @@ export default function BusinessPlanPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleDeletePlan = async () => {
+    if (!plan) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      const response = await fetch(`/api/ideas/${plan.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // 삭제 성공 - 목록 페이지로 리다이렉트
+        window.location.href = '/ideas';
+      } else {
+        throw new Error(data.error || '삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('기획서 삭제 실패:', error);
+      alert(error instanceof Error ? error.message : '기획서 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   const generateMarkdown = (plan: IdeaPlan): string => {
     return `# ${plan.project_name}
 
@@ -553,6 +598,11 @@ ${plan.roi_prediction || '데이터 없음'}
   const getCompetitionText = (competition: number): string => {
     const texts = ['', '매우 유리', '유리', '보통', '불리', '매우 불리'];
     return texts[competition] || '보통';
+  };
+
+  // 현재 사용자가 기획서 소유자인지 확인
+  const isOwner = () => {
+    return currentUser && plan && plan.user_id === currentUser.id;
   };
 
   if (loading) {
@@ -1188,83 +1238,112 @@ ${plan.roi_prediction || '데이터 없음'}
         </footer>
       </div>
 
-      {/* 플로팅 네비게이션 - 모바일과 PC 모두 */}
+      {/* 플로팅 네비게이션 - 모바일 최적화 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 z-50">
-        <div className="flex justify-center gap-2 max-w-md mx-auto">
+        <div className="flex justify-center gap-3 max-w-sm mx-auto">
           <a 
             href="/ideas" 
-            className="btn-secondary inline-flex items-center gap-1 flex-1 justify-center px-3 py-2.5"
+            className="btn-secondary inline-flex items-center gap-2 px-4 py-2.5 flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-xs">목록으로</span>
+            <span className="text-sm font-medium">목록으로</span>
           </a>
           <a 
             href="/" 
-            className="btn-secondary inline-flex items-center gap-1 flex-1 justify-center px-3 py-2.5"
+            className="btn-secondary inline-flex items-center gap-2 px-4 py-2.5 flex-shrink-0"
           >
             <Home className="w-4 h-4" />
-            <span className="text-xs">홈으로</span>
+            <span className="text-sm font-medium">홈으로</span>
           </a>
-          <div className="relative download-menu-container flex-1">
+          <div className="relative more-menu-container flex-shrink-0">
             <button
-              onClick={() => setDownloadMenuOpen(!downloadMenuOpen)}
-              disabled={isGeneratingPDF}
-              className="btn-secondary inline-flex items-center gap-1 w-full justify-center px-3 py-2.5"
+              onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+              disabled={isGeneratingPDF || isDeleting}
+              className="btn-outline inline-flex items-center gap-2 px-4 py-2.5"
             >
-              <Download className="w-4 h-4" />
-              <span className="text-xs">{isGeneratingPDF ? '생성중' : '저장'}</span>
+              <MoreHorizontal className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-600">더보기</span>
             </button>
             
-            {/* 저장 메뉴 */}
-            {downloadMenuOpen && !isGeneratingPDF && (
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-40 bg-white rounded-lg shadow-lg border border-slate-200 z-10">
+            {/* 더보기 메뉴 */}
+            {moreMenuOpen && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-52 bg-white rounded-lg shadow-lg border border-slate-200 z-10">
                 <div className="py-2">
+                  {/* 저장 옵션들 */}
+                  <div className="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    저장
+                  </div>
                   <button
-                    onClick={handleExportPDF}
-                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700 text-sm"
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      handleExportPDF();
+                    }}
+                    disabled={isGeneratingPDF}
+                    className="w-full px-4 py-3 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700"
                   >
                     <FileText className="w-4 h-4" />
-                    PDF로 저장
+                    <span className="text-sm">PDF로 저장</span>
                   </button>
                   <button
-                    onClick={handleExportMarkdown}
-                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700 text-sm"
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      handleExportMarkdown();
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700"
                   >
-                    <FileText className="w-4 h-4" />
-                    마크다운 저장
+                    <Download className="w-4 h-4" />
+                    <span className="text-sm">마크다운 저장</span>
                   </button>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="relative share-menu-container flex-1">
-            <button
-              onClick={() => setShareMenuOpen(!shareMenuOpen)}
-              className="btn-outline inline-flex items-center gap-1 w-full justify-center px-3 py-2.5"
-            >
-              <Share className="w-4 h-4 text-blue-600" />
-              <span className="text-xs text-blue-600">공유</span>
-            </button>
-            
-            {/* 공유 메뉴 */}
-            {shareMenuOpen && (
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-10">
-                <div className="py-2">
+                  
+                  {/* 구분선 */}
+                  <div className="border-t border-slate-200 my-2"></div>
+                  
+                  {/* 공유 옵션들 */}
+                  <div className="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    공유
+                  </div>
                   <button
-                    onClick={handleCopyLink}
-                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700 text-sm"
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      handleCopyLink();
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700"
                   >
                     <Copy className="w-4 h-4" />
-                    링크 복사
+                    <span className="text-sm">링크 복사</span>
                   </button>
                   {typeof navigator !== 'undefined' && 'share' in navigator && (
                     <button
-                      onClick={handleNativeShare}
-                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700 text-sm"
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        handleNativeShare();
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700"
                     >
-                      <MoreHorizontal className="w-4 h-4" />
-                      다른 앱으로 공유
+                      <Share className="w-4 h-4" />
+                      <span className="text-sm">다른 앱으로 공유</span>
                     </button>
+                  )}
+                  
+                  {/* 삭제 옵션 - 소유자에게만 표시 */}
+                  {isOwner() && (
+                    <>
+                      <div className="border-t border-slate-200 my-2"></div>
+                      <div className="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        관리
+                      </div>
+                      <button
+                        onClick={() => {
+                          setMoreMenuOpen(false);
+                          setShowDeleteModal(true);
+                        }}
+                        disabled={isDeleting}
+                        className="w-full px-4 py-3 text-left hover:bg-red-50 flex items-center gap-3 text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span className="text-sm">{isDeleting ? '삭제 중...' : '기획서 삭제'}</span>
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1272,6 +1351,41 @@ ${plan.roi_prediction || '데이터 없음'}
           </div>
         </div>
       </div>
+
+      {/* 삭제 확인 모달 */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full mx-4">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                기획서를 삭제하시겠습니까?
+              </h3>
+              <p className="text-sm text-slate-600 mb-6">
+                <span className="font-medium">"{plan?.project_name}"</span> 기획서를 삭제하면 복구할 수 없습니다.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleDeletePlan}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? '삭제 중...' : '삭제하기'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

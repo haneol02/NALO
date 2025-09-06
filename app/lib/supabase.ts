@@ -219,6 +219,19 @@ export const dbHelpers = {
     return data;
   },
 
+  // 아이디어 기획서 삭제
+  async deleteIdeaPlan(id: string) {
+    const { data, error } = await supabase
+      .from('idea_plans')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
   // 사용량 로그 저장
   async logUsage(log: {
     api_type: 'openai' | 'ddgs' | 'supabase';

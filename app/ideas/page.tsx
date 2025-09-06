@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Tag, DollarSign, FileText, Home } from 'lucide-react';
+import { Calendar, Tag, DollarSign, FileText, Home, Trash2, MoreVertical } from 'lucide-react';
 import AuthButton from '../components/AuthButton';
+import { createClient } from '@/app/lib/supabase/client';
 
 interface IdeaPlan {
   id: string;
@@ -46,17 +47,50 @@ interface IdeaPlan {
   input_keywords: string[];
   search_query: string;
   created_at: string;
+  user_id?: string | null;
+  author_email?: string | null;
 }
 
 export default function IdeasPage() {
   const [ideas, setIdeas] = useState<IdeaPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<IdeaPlan | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const itemsPerPage = 6;
 
   useEffect(() => {
     fetchIdeas();
+    
+    // 현재 사용자 정보 가져오기
+    const fetchUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    
+    fetchUser();
   }, []);
+
+  // 외부 클릭으로 메뉴 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (activeMenu && !(event.target as Element).closest('.menu-container')) {
+        setActiveMenu(null);
+      }
+    };
+
+    if (activeMenu) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [activeMenu]);
 
   const fetchIdeas = async () => {
     try {
@@ -90,6 +124,52 @@ export default function IdeasPage() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 현재 사용자가 기획서 소유자인지 확인
+  const isOwner = (plan: IdeaPlan) => {
+    return currentUser && plan && plan.user_id === currentUser.id;
+  };
+
+  const handleDeleteClick = (plan: IdeaPlan) => {
+    setSelectedPlan(plan);
+    setShowDeleteModal(true);
+    setActiveMenu(null);
+  };
+
+  const handleDeletePlan = async () => {
+    if (!selectedPlan) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      const response = await fetch(`/api/ideas/${selectedPlan.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // 삭제 성공 - 목록에서 제거
+        setIdeas(prev => prev.filter(idea => idea.id !== selectedPlan.id));
+        
+        // 현재 페이지에 아이템이 없으면 이전 페이지로
+        const remainingItems = ideas.filter(idea => idea.id !== selectedPlan.id).length;
+        const newTotalPages = Math.ceil(remainingItems / itemsPerPage);
+        if (currentPage > newTotalPages && newTotalPages > 0) {
+          setCurrentPage(newTotalPages);
+        }
+      } else {
+        throw new Error(data.error || '삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('기획서 삭제 실패:', error);
+      alert(error instanceof Error ? error.message : '기획서 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setSelectedPlan(null);
+    }
   };
 
   if (loading) {
@@ -168,9 +248,36 @@ export default function IdeasPage() {
               <div key={idea.id} className="card card-hover page-transition mt-6 sm:mt-8 md:mt-12" style={{ animationDelay: `${index * 0.1}s` }}>
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg sm:text-xl font-semibold text-slate-800 mb-2">
-                      {idea.project_name}
-                    </h3>
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="text-lg sm:text-xl font-semibold text-slate-800">
+                        {idea.project_name}
+                      </h3>
+                      {isOwner(idea) && (
+                        <div className="relative menu-container">
+                          <button
+                            onClick={() => setActiveMenu(activeMenu === idea.id ? null : idea.id)}
+                            className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+                          >
+                            <MoreVertical className="w-4 h-4 text-slate-500" />
+                          </button>
+                          
+                          {/* 메뉴 드롭다운 */}
+                          {activeMenu === idea.id && (
+                            <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-lg shadow-lg border border-slate-200 z-10">
+                              <div className="py-1">
+                                <button
+                                  onClick={() => handleDeleteClick(idea)}
+                                  className="w-full px-3 py-2 text-left hover:bg-red-50 flex items-center gap-2 text-red-600 text-sm"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  삭제하기
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <div className="mb-1"></div>
                     <p className="text-sm sm:text-base text-slate-600 mb-3 selectable">
                       {idea.core_idea}
@@ -296,6 +403,44 @@ export default function IdeasPage() {
           </a>
         </div>
       </div>
+
+      {/* 삭제 확인 모달 */}
+      {showDeleteModal && selectedPlan && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full mx-4">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                기획서를 삭제하시겠습니까?
+              </h3>
+              <p className="text-sm text-slate-600 mb-6">
+                <span className="font-medium">"{selectedPlan.project_name}"</span> 기획서를 삭제하면 복구할 수 없습니다.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setSelectedPlan(null);
+                  }}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleDeletePlan}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? '삭제 중...' : '삭제하기'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
