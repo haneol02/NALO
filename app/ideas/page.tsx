@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Calendar, Tag, DollarSign, FileText, Home } from 'lucide-react';
+import AuthButton from '../components/AuthButton';
 
 interface IdeaPlan {
   id: string;
@@ -96,8 +97,9 @@ export default function IdeasPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 page-transition">
         {/* 헤더 바 */}
         <header className="bg-white border-b border-slate-200 px-4 py-4">
-          <div className="max-w-6xl mx-auto flex items-center justify-center">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
             <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+            <AuthButton />
           </div>
         </header>
 
@@ -120,8 +122,9 @@ export default function IdeasPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 page-transition no-select">
       {/* 헤더 바 */}
       <header className="bg-white border-b border-slate-200 px-4 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-center">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+          <AuthButton />
         </div>
       </header>
 

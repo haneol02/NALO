@@ -77,6 +77,8 @@ export const dbHelpers = {
     idea_id?: string; // 아이디어 ID 연결용
     input_keywords?: string[]; // 키워드 정보
     search_query?: string; // 검색 쿼리
+    user_id?: string | null; // 사용자 ID
+    author_email?: string | null; // 작성자 이메일
     
     // 하위 호환성을 위한 선택적 필드들 (기본값으로 처리)
     main_objectives?: string;
@@ -150,7 +152,9 @@ export const dbHelpers = {
       
       // 키워드 정보 포함
       input_keywords: plan.input_keywords || null,
-      search_query: plan.search_query || null
+      search_query: plan.search_query || null,
+      user_id: plan.user_id || null,
+      author_email: plan.author_email || null
     };
 
     const { data, error } = await supabase
@@ -181,13 +185,23 @@ export const dbHelpers = {
     return data;
   },
 
-  // 저장된 아이디어 기획서 조회
-  async getIdeaPlans(limit = 20) {
-    const { data, error } = await supabase
+  // 저장된 아이디어 기획서 조회 (사용자별 필터링 지원)
+  async getIdeaPlans(limit = 20, userId?: string | null) {
+    let query = supabase
       .from('idea_plans')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit);
+    
+    // userId가 제공된 경우 해당 사용자의 기획서만 조회
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      // userId가 없는 경우 (익명 사용자) user_id가 null인 기획서만 조회
+      query = query.is('user_id', null);
+    }
+    
+    const { data, error } = await query;
     
     if (error) throw error;
     return data;

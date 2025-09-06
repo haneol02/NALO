@@ -73,7 +73,7 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
                   />
                   <div>
                     <div className="text-sm font-medium text-slate-800">주제 탐색 후 생성</div>
-                    <div className="text-xs text-slate-600">주제 탐색 → 주제 확장/개선 → 아이디어 생성</div>
+                    <div className="text-xs text-slate-600">주제 탐색 → 확장 → 아이디어 생성</div>
                   </div>
                 </label>
                 <label className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
@@ -90,7 +90,7 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
                     className="mr-3"
                   />
                   <div>
-                    <div className="text-sm font-medium text-slate-800">바로 생성 (빠름)</div>
+                    <div className="text-sm font-medium text-slate-800">바로 아이디어 생성</div>
                     <div className="text-xs text-slate-600">입력 → 즉시 아이디어 생성</div>
                   </div>
                 </label>

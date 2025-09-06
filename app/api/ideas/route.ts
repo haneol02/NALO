@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbHelpers } from '@/app/lib/supabase';
+import { createClient } from '@/app/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,10 +10,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '20');
     
-    // Supabase에서 저장된 기획서 조회
-    const ideas = await dbHelpers.getIdeaPlans(limit);
+    // 사용자 인증 확인
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     
-    console.log(`[SUCCESS] ${ideas.length}개 아이디어 기획서 조회 완료`);
+    // Supabase에서 저장된 기획서 조회 (로그인한 사용자의 기획서만)
+    const ideas = await dbHelpers.getIdeaPlans(limit, user?.id);
+    
+    console.log(`[SUCCESS] ${ideas.length}개 아이디어 기획서 조회 완료 (사용자: ${user?.id || '익명'})`);
 
     return NextResponse.json({
       success: true,

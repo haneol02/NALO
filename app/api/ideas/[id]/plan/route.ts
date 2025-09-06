@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateIdeaPlan } from '@/app/lib/openai';
 import { dbHelpers } from '@/app/lib/supabase';
+import { createClient } from '@/app/lib/supabase/server';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -15,6 +16,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         { status: 400 }
       );
     }
+
+    // 사용자 인증 확인
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
     console.log(`=== 선택된 아이디어 기획서 생성: ${idea.title} ===`);
     console.log('아이디어 ID:', params.id);
@@ -106,7 +111,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       // 연결 정보
       idea_id: params.id, // 아이디어 ID 연결
       input_keywords: planResult.keywords && planResult.keywords.length > 0 ? planResult.keywords : (idea.keywords || idea.input_keywords || null),
-      search_query: idea.searchQuery || idea.search_query || null
+      search_query: idea.searchQuery || idea.search_query || null,
+      user_id: user?.id || null, // 사용자 ID 연결
+      author_email: user?.email || null // 작성자 이메일
     };
     
     const savedPlan = await dbHelpers.saveIdeaPlan(planData);

@@ -23,6 +23,8 @@ interface ResultDisplayProps {
 
 export default function ResultDisplay({ ideas, onNewGeneration, keywords = [] }: ResultDisplayProps) {
   const [showPlanGenModal, setShowPlanGenModal] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completedPlanId, setCompletedPlanId] = useState<string | null>(null);
   
   // Use the new business plan hook
   const { 
@@ -53,9 +55,10 @@ export default function ResultDisplay({ ideas, onNewGeneration, keywords = [] }:
     const planId = await generatePlan(idea);
     setShowPlanGenModal(false);
     
-    // 기획서 생성이 완료되면 자동으로 기획서 페이지 열기
+    // 기획서 생성이 완료되면 완료 모달 표시
     if (planId) {
-      window.open(`/plan/${planId}`, '_blank', 'noopener,noreferrer');
+      setCompletedPlanId(planId);
+      setShowCompletionModal(true);
     }
   };
 
@@ -111,6 +114,52 @@ export default function ResultDisplay({ ideas, onNewGeneration, keywords = [] }:
                   }}
                 ></div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 기획서 생성 완료 모달 */}
+      {showCompletionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl">
+            <div className="mb-6">
+              {/* 성공 아이콘 */}
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              
+              <h3 className="text-xl font-bold text-slate-800 mb-2">
+                기획서가 생성되었습니다
+              </h3>
+              <p className="text-sm text-slate-600">
+                상세한 사업 기획서 작성이 완료되었습니다
+              </p>
+            </div>
+            
+            {/* 액션 버튼들 */}
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => {
+                  if (completedPlanId) {
+                    window.open(`/plan/${completedPlanId}`, '_blank', 'noopener,noreferrer');
+                  }
+                  setShowCompletionModal(false);
+                  setCompletedPlanId(null);
+                }}
+                className="btn-primary px-6 py-3 text-sm font-semibold"
+              >
+                보기
+              </button>
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  setCompletedPlanId(null);
+                }}
+                className="btn-secondary px-6 py-3 text-sm font-semibold"
+              >
+                닫기
+              </button>
             </div>
           </div>
         </div>

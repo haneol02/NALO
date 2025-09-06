@@ -74,6 +74,8 @@ interface IdeaPlan {
   created_at: string;
   input_keywords?: string[];
   search_query?: string;
+  user_id?: string | null;
+  author_email?: string | null;
 }
 
 export default function BusinessPlanPage() {
@@ -674,6 +676,12 @@ ${plan.roi_prediction || '데이터 없음'}
                 <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
                 <span>{formatDate(plan.created_date)}</span>
               </div>
+              {(plan.user_id || plan.author_email) && (
+                <div className="flex items-center justify-center gap-1.5">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span>작성자: {plan.author_email || (plan.user_id?.substring(0, 8) + '...')}</span>
+                </div>
+              )}
               <div className="flex items-center justify-center gap-1.5">
                 <Tag className="w-3 h-3 sm:w-4 sm:h-4 text-slate-500" />
                 <span>{plan.project_type}</span>
@@ -707,12 +715,22 @@ ${plan.roi_prediction || '데이터 없음'}
               <FileText className="w-6 h-6 text-slate-600" />
               <h2 className="text-lg sm:text-xl font-semibold text-slate-800">기본 정보</h2>
             </div>
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">작성일</h3>
                 <div className="mb-1"></div>
                 <p className="text-xs sm:text-sm text-slate-600">{formatDate(plan.created_date)}</p>
               </div>
+              {(plan.user_id || plan.author_email) && (
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800 mb-2">작성자</h3>
+                  <div className="mb-1"></div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    <p className="text-xs sm:text-sm text-slate-600">{plan.author_email || (plan.user_id?.substring(0, 8) + '...')}</p>
+                  </div>
+                </div>
+              )}
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">프로젝트 유형</h3>
                 <div className="mb-1"></div>

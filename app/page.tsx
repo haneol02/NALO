@@ -4,6 +4,7 @@ import { useState } from 'react';
 import IdeaGenerator from './components/IdeaGenerator';
 import SimpleTopicExplorer from './components/SimpleTopicExplorer';
 import ResultDisplay from './components/ResultDisplay';
+import AuthButton from './components/AuthButton';
 import { AlertTriangle, Frown } from 'lucide-react';
 
 import { Idea } from '@/types';
@@ -79,6 +80,7 @@ export default function HomePage() {
       setIsGenerating(false);
     }
   };
+
 
   const handleTopicSelected = (context: any) => {
     console.log('=== 최종 주제 선택됨 ===');
@@ -168,6 +170,11 @@ export default function HomePage() {
       <header className="relative text-center py-12 sm:py-20 px-4 bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden">
         {/* Background decoration */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100/20 via-transparent to-transparent"></div>
+        
+        {/* Auth Button - Fixed positioned */}
+        <div className="absolute top-4 right-4 z-10">
+          <AuthButton />
+        </div>
         
         <div className="relative max-w-4xl mx-auto">
           <div className="mb-12"></div>
