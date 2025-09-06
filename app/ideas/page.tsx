@@ -416,7 +416,7 @@ export default function IdeasPage() {
                 기획서를 삭제하시겠습니까?
               </h3>
               <p className="text-sm text-slate-600 mb-6">
-                <span className="font-medium">"{selectedPlan.project_name}"</span> 기획서를 삭제하면 복구할 수 없습니다.
+                <span className="font-medium">&quot;{selectedPlan.project_name}&quot;</span> 기획서를 삭제하면 복구할 수 없습니다.
               </p>
               <div className="flex gap-3">
                 <button
