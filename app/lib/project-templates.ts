@@ -167,7 +167,7 @@ export const IDEA_PLAN_PROMPT = `
     "swot_opportunities": "외부 환경에서 찾을 수 있는 기회 요소들을 구체적으로 명시",
     "swot_threats": "외부 위험 요소와 잠재적 위협들을 현실적으로 분석",
     
-    "tech_stack": "사용할 기술 스택을 프론트엔드, 백엔드, 데이터베이스 등으로 구분하여 구체적으로 명시",
+    "tech_stack": "이 프로젝트에 가장 적합한 기술 스택을 선택하여 프론트엔드, 백엔드, 데이터베이스로 구분해 명시. 프로젝트 특성에 맞는 다양한 기술 조합 고려 (예: React/Vue/Svelte, Node.js/Python/Go, MySQL/PostgreSQL/MongoDB 등)",
     "system_architecture": "시스템 아키텍처를 확장성, 보안, 성능 관점에서 200-300자로 설명",
     "database_type": "사용할 데이터베이스 종류와 선택 이유를 구체적으로 명시",
     "development_environment": "개발 환경, 협업 도구, 배포 방식 등을 구체적으로 설명",

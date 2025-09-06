@@ -85,6 +85,7 @@ export default function BusinessPlanPage() {
   const [isToastFading, setIsToastFading] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
 
   const fetchPlan = useCallback(async () => {
     try {
@@ -115,22 +116,25 @@ export default function BusinessPlanPage() {
     fetchPlan();
   }, [fetchPlan]);
 
-  // 외부 클릭으로 공유 메뉴 닫기
+  // 외부 클릭으로 메뉴 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (shareMenuOpen && !(event.target as Element).closest('.share-menu-container')) {
         setShareMenuOpen(false);
       }
+      if (downloadMenuOpen && !(event.target as Element).closest('.download-menu-container')) {
+        setDownloadMenuOpen(false);
+      }
     };
 
-    if (shareMenuOpen) {
+    if (shareMenuOpen || downloadMenuOpen) {
       document.addEventListener('click', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [shareMenuOpen]);
+  }, [shareMenuOpen, downloadMenuOpen]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR');
@@ -212,6 +216,7 @@ export default function BusinessPlanPage() {
     if (!plan) return;
     
     setIsGeneratingPDF(true);
+    setDownloadMenuOpen(false);
     
     try {
       // 동적으로 라이브러리 import
@@ -340,6 +345,212 @@ export default function BusinessPlanPage() {
     } finally {
       setIsGeneratingPDF(false);
     }
+  };
+
+  const handleExportMarkdown = () => {
+    if (!plan) return;
+    
+    setDownloadMenuOpen(false);
+    
+    // 마크다운 형식으로 변환
+    const markdown = generateMarkdown(plan);
+    
+    // 다운로드
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${plan.project_name}_기획서.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const generateMarkdown = (plan: IdeaPlan): string => {
+    return `# ${plan.project_name}
+
+${plan.service_summary ? `> ${plan.service_summary}\n` : ''}
+
+**작성일**: ${formatDate(plan.created_date)}  
+**프로젝트 유형**: ${plan.project_type}  
+**총 예산**: ${formatCost(plan.development_cost + plan.operation_cost + plan.marketing_cost + plan.other_cost)}
+
+${plan.input_keywords && plan.input_keywords.length > 0 ? `**키워드**: ${plan.input_keywords.map(k => `\`${k}\``).join(', ')}\n` : ''}
+
+## 📋 프로젝트 개요
+
+### 핵심 아이디어
+${plan.core_idea || '데이터 없음'}
+
+### 배경 및 동기
+${plan.background || '데이터 없음'}
+
+### 대상 고객/사용자
+${plan.target_customer || '데이터 없음'}
+
+### 해결하려는 문제
+${plan.problem_to_solve || '데이터 없음'}
+
+### 제안하는 해결책
+${plan.proposed_solution || '데이터 없음'}
+
+## 🎯 프로젝트 목표
+
+### 주요 목표
+${plan.main_objectives || '데이터 없음'}
+
+### 성공 지표
+${plan.success_metrics || '데이터 없음'}
+
+## 📌 프로젝트 범위
+
+### 포함 사항
+${plan.project_scope_include || '데이터 없음'}
+
+### 제외 사항
+${plan.project_scope_exclude || '데이터 없음'}
+
+## ✨ 주요 기능
+
+${plan.features && plan.features.length > 0 ? 
+  plan.features.map((feature, index) => 
+    `${index + 1}. ${typeof feature === 'string' ? feature : (feature.detail_feature || feature.feature_id || '기능')}`
+  ).join('\n') : 
+  '기능 명세 정보가 없습니다.'
+}
+
+${plan.key_features && plan.key_features.length > 0 ? `
+### 핵심 기능
+${plan.key_features.map((feature, index) => `${index + 1}. ${feature}`).join('\n')}
+` : ''}
+
+## 📊 실현 가능성 분석
+
+${plan.difficulty ? `**기술 난이도**: ${getDifficultyText(plan.difficulty)} (${plan.difficulty}/5)\n` : ''}
+${plan.market_potential ? `**시장 잠재력**: ${getMarketPotentialText(plan.market_potential)} (${plan.market_potential}/5)\n` : ''}
+${plan.competition ? `**경쟁 우위도**: ${getCompetitionText(plan.competition)} (${5 - plan.competition}/5)\n` : ''}
+
+${plan.challenges && plan.challenges.length > 0 ? `
+### ⚠️ 예상 도전과제
+${plan.challenges.map(challenge => `- ${challenge}`).join('\n')}
+` : ''}
+
+${plan.success_factors && plan.success_factors.length > 0 ? `
+### ✅ 성공 요인
+${plan.success_factors.map(factor => `- ${factor}`).join('\n')}
+` : ''}
+
+## 📈 시장 분석
+
+### 시장 분석
+${plan.market_analysis || '데이터 없음'}
+
+### 경쟁사 분석
+${plan.competitors || '데이터 없음'}
+
+### 차별화 포인트
+${plan.differentiation || '데이터 없음'}
+
+## 🔍 SWOT 분석
+
+### 강점 (Strengths)
+${plan.swot_strengths || '데이터 없음'}
+
+### 약점 (Weaknesses)
+${plan.swot_weaknesses || '데이터 없음'}
+
+### 기회 (Opportunities)
+${plan.swot_opportunities || '데이터 없음'}
+
+### 위협 (Threats)
+${plan.swot_threats || '데이터 없음'}
+
+## 🛠 기술적 요구사항
+
+### 사용 기술
+${plan.tech_stack || '데이터 없음'}
+
+### 시스템 아키텍처
+${plan.system_architecture || '데이터 없음'}
+
+### 데이터베이스
+${plan.database_type || '데이터 없음'}
+
+### 개발 환경
+${plan.development_environment || '데이터 없음'}
+
+### 보안 요구사항
+${plan.security_requirements || '데이터 없음'}
+
+${plan.project_phases && plan.project_phases.length > 0 ? `
+## 📅 프로젝트 단계
+
+${plan.project_phases.map((phase, index) => {
+  if (typeof phase === 'string') {
+    return `### ${index + 1}. ${phase}`;
+  } else {
+    return `### ${index + 1}. ${phase.phase || `${index + 1}단계`}
+${phase.duration ? `**기간**: ${phase.duration}\n` : ''}
+${phase.tasks ? `**주요 작업**: ${Array.isArray(phase.tasks) ? phase.tasks.join(', ') : phase.tasks}\n` : ''}
+${phase.deliverables ? `**결과물**: ${Array.isArray(phase.deliverables) ? phase.deliverables.join(', ') : phase.deliverables}\n` : ''}`;
+  }
+}).join('\n\n')}
+` : ''}
+
+## 💰 예산
+
+| 항목 | 금액 |
+|------|------|
+| 개발비 | ${formatCost(plan.development_cost)} |
+| 운영비 | ${formatCost(plan.operation_cost)} |
+| 마케팅비 | ${formatCost(plan.marketing_cost)} |
+| 기타 | ${formatCost(plan.other_cost)} |
+| **총액** | **${formatCost(plan.development_cost + plan.operation_cost + plan.marketing_cost + plan.other_cost)}** |
+
+## 🛡️ 위험 관리
+
+### 예상 위험요소
+${plan.risk_factors || '데이터 없음'}
+
+### 위험 대응 방안
+${plan.risk_response || '데이터 없음'}
+
+### 비상 계획
+${plan.contingency_plan || '데이터 없음'}
+
+## 📊 기대효과 및 성과
+
+### 예상 효과
+${plan.expected_effects || '데이터 없음'}
+
+### 비즈니스 임팩트
+${plan.business_impact || '데이터 없음'}
+
+### 사회적 가치
+${plan.social_value || '데이터 없음'}
+
+### ROI 예측
+${plan.roi_prediction || '데이터 없음'}
+
+---
+
+*이 기획서는 NALO AI를 통해 생성되었습니다.*`;
+  };
+
+  const getDifficultyText = (difficulty: number): string => {
+    const texts = ['', '매우 쉬움', '쉬움', '보통', '어려움', '매우 어려움'];
+    return texts[difficulty] || '보통';
+  };
+
+  const getMarketPotentialText = (potential: number): string => {
+    const texts = ['', '매우 낮음', '낮음', '보통', '높음', '매우 높음'];
+    return texts[potential] || '보통';
+  };
+
+  const getCompetitionText = (competition: number): string => {
+    const texts = ['', '매우 유리', '유리', '보통', '불리', '매우 불리'];
+    return texts[competition] || '보통';
   };
 
   if (loading) {
@@ -976,14 +1187,38 @@ export default function BusinessPlanPage() {
             <Home className="w-4 h-4" />
             <span className="text-xs">홈으로</span>
           </a>
-          <button
-            onClick={handleExportPDF}
-            disabled={isGeneratingPDF}
-            className="btn-secondary inline-flex items-center gap-1 flex-1 justify-center px-3 py-2.5"
-          >
-            <Download className="w-4 h-4" />
-            <span className="text-xs">{isGeneratingPDF ? '생성중' : '저장'}</span>
-          </button>
+          <div className="relative download-menu-container flex-1">
+            <button
+              onClick={() => setDownloadMenuOpen(!downloadMenuOpen)}
+              disabled={isGeneratingPDF}
+              className="btn-secondary inline-flex items-center gap-1 w-full justify-center px-3 py-2.5"
+            >
+              <Download className="w-4 h-4" />
+              <span className="text-xs">{isGeneratingPDF ? '생성중' : '저장'}</span>
+            </button>
+            
+            {/* 저장 메뉴 */}
+            {downloadMenuOpen && !isGeneratingPDF && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-40 bg-white rounded-lg shadow-lg border border-slate-200 z-10">
+                <div className="py-2">
+                  <button
+                    onClick={handleExportPDF}
+                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700 text-sm"
+                  >
+                    <FileText className="w-4 h-4" />
+                    PDF로 저장
+                  </button>
+                  <button
+                    onClick={handleExportMarkdown}
+                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-3 text-slate-700 text-sm"
+                  >
+                    <FileText className="w-4 h-4" />
+                    마크다운 저장
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="relative share-menu-container flex-1">
             <button
               onClick={() => setShareMenuOpen(!shareMenuOpen)}

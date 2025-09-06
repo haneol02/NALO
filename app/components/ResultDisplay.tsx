@@ -21,6 +21,7 @@ interface ResultDisplayProps {
 }
 
 export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayProps) {
+  const [showPlanGenModal, setShowPlanGenModal] = useState(false);
   
   // Use the new business plan hook
   const { 
@@ -47,12 +48,72 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
       return;
     }
     
-    await generatePlan(idea);
+    setShowPlanGenModal(true);
+    const planId = await generatePlan(idea);
+    setShowPlanGenModal(false);
+    
+    // 기획서 생성이 완료되면 자동으로 기획서 페이지 열기
+    if (planId) {
+      window.open(`/plan/${planId}`, '_blank', 'noopener,noreferrer');
+    }
   };
 
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8 relative">
+      {/* 기획서 생성 로딩 모달 */}
+      {showPlanGenModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl">
+            <div className="relative mb-6">
+              {/* 파티클 효과 */}
+              <div className="absolute inset-0 overflow-hidden rounded-xl">
+                {[...Array(6)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="particle"
+                    style={{
+                      width: `${Math.random() * 8 + 4}px`,
+                      height: `${Math.random() * 8 + 4}px`,
+                      left: `${Math.random() * 100}%`,
+                      top: `${Math.random() * 100}%`,
+                      animationDelay: `${Math.random() * 3}s`
+                    }}
+                  ></div>
+                ))}
+              </div>
+              
+              {/* 중앙 로딩 스피너 */}
+              <div className="relative z-10">
+                <div className="inline-block relative mb-4">
+                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent loading-pulse"></div>
+                  <div className="absolute inset-2 animate-pulse rounded-full bg-gradient-to-r from-blue-400 to-white opacity-20"></div>
+                </div>
+              </div>
+            </div>
+            
+            <h3 className="text-xl font-bold text-slate-800 mb-2 loading-pulse">
+              기획서 생성 중...
+            </h3>
+            <p className="text-sm text-slate-600 mb-4">
+              상세한 사업 기획서를 작성하고 있습니다
+            </p>
+            
+            {/* 진행 단계 표시 */}
+            <div className="flex justify-center items-center gap-1">
+              {[...Array(4)].map((_, i) => (
+                <div
+                  key={i}
+                  className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"
+                  style={{
+                    animationDelay: `${i * 0.2}s`
+                  }}
+                ></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {/* 헤더 */}
       <div className="text-center mt-6 sm:mt-8 md:mt-12">
         <h2 className="text-base min-[375px]:text-lg sm:text-2xl md:text-3xl font-bold text-slate-800 mb-2 text-center px-4">
@@ -278,20 +339,13 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
                   {!hasPlan(idea.id) ? (
                     <button
                       onClick={() => handleGenerateBusinessPlan(idea, index)}
-                      disabled={isGeneratingPlan(idea.id)}
+                      disabled={showPlanGenModal || isGeneratingPlan(idea.id)}
                       className="btn-plan-generate w-full sm:w-auto text-sm sm:text-base px-3 sm:px-6"
                     >
-                      {isGeneratingPlan(idea.id) ? (
-                        <span>
-                          <span className="hidden min-[375px]:inline">기획서 생성 중...</span>
-                          <span className="min-[375px]:hidden">생성 중...</span>
-                        </span>
-                      ) : (
-                        <span>
-                          <span className="hidden min-[375px]:inline">기획서 생성하기</span>
-                          <span className="min-[375px]:hidden">기획서 생성</span>
-                        </span>
-                      )}
+                      <span>
+                        <span className="hidden min-[375px]:inline">기획서 생성하기</span>
+                        <span className="min-[375px]:hidden">기획서 생성</span>
+                      </span>
                     </button>
                   ) : (
                     <button
