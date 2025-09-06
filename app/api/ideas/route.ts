@@ -58,34 +58,57 @@ export async function POST(request: NextRequest) {
 
     // 새로운 아이디어 생성 로직
     const { generateIdeas } = await import('@/app/lib/openai');
-    const { keywords = [], topicContext = null, finalTopic = '' }: { 
+    const { keywords = [], topicContext = null, finalTopic = '', originalPrompt = '' }: { 
       keywords?: string[], 
       topicContext?: any, 
-      finalTopic?: string 
+      finalTopic?: string,
+      originalPrompt?: string
     } = body;
 
     // 입력 검증
-    if (keywords.length === 0 && !finalTopic) {
+    if ((keywords.length === 0 && !finalTopic) && !originalPrompt) {
       return NextResponse.json(
         {
           success: false,
-          error: '키워드 또는 최종 주제가 필요합니다.',
+          error: '키워드, 최종 주제 또는 원본 프롬프트가 필요합니다.',
         },
         { status: 400 }
       );
     }
 
     console.log('=== 아이디어만 생성 요청 ===');
+    console.log('원본 프롬프트:', originalPrompt);
     console.log('최종 주제:', finalTopic);
     console.log('사용자 키워드:', keywords);
     console.log('주제 컨텍스트:', topicContext);
     console.log('=========================');
 
-    // 키워드와 주제를 바탕으로 AI 아이디어 생성 (기획서 생성 없음)
+    // 선택된 주제를 반영한 구체적인 프롬프트 생성
+    let specificPrompt = '';
+    if (finalTopic && originalPrompt) {
+      // 주제 선택 후 생성: 원본 프롬프트 + 선택된 주제
+      specificPrompt = `사용자 요청: "${originalPrompt}"
+
+선택된 주제: "${finalTopic}"
+
+위 사용자 요청에서 "${finalTopic}" 주제를 선택했습니다. 이 특정 주제에 대한 구체적이고 실현 가능한 프로젝트 아이디어 1개를 생성해주세요.`;
+    } else if (originalPrompt) {
+      // 바로 생성: 원본 프롬프트만 사용
+      specificPrompt = originalPrompt;
+    } else if (finalTopic) {
+      // 주제만 있는 경우
+      specificPrompt = `${finalTopic}에 대한 프로젝트 아이디어를 생성해주세요.`;
+    }
+
+    // 주제 선택 후 생성인지 바로 생성인지에 따라 아이디어 개수 결정
+    const ideaCount = (finalTopic && originalPrompt) ? 1 : 3;
+
     const result = await generateIdeas({
+      prompt: specificPrompt,
       keywords,
       finalTopic,
       topicContext,
+      ideaCount,
     });
 
     // 결과 검증

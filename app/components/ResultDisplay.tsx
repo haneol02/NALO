@@ -18,9 +18,10 @@ import { Idea } from '@/types';
 interface ResultDisplayProps {
   ideas: Idea[];
   onNewGeneration: () => void;
+  keywords?: string[];
 }
 
-export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayProps) {
+export default function ResultDisplay({ ideas, onNewGeneration, keywords = [] }: ResultDisplayProps) {
   const [showPlanGenModal, setShowPlanGenModal] = useState(false);
   
   // Use the new business plan hook
@@ -119,9 +120,31 @@ export default function ResultDisplay({ ideas, onNewGeneration }: ResultDisplayP
         <h2 className="text-base min-[375px]:text-lg sm:text-2xl md:text-3xl font-bold text-slate-800 mb-2 text-center px-4">
           당신만의 상세한 아이디어를 준비했습니다
         </h2>
-        <p className="text-xs min-[375px]:text-sm text-slate-600 text-center">
+        <p className="text-xs min-[375px]:text-sm text-slate-600 text-center mb-4">
           아이디어가 마음에 들면 기획서를 생성해보세요.
         </p>
+        
+        {/* 참고용 키워드 표시 */}
+        {keywords.length > 0 && (
+          <div className="max-w-4xl mx-auto mb-6">
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span className="text-sm font-semibold text-blue-800">분석된 핵심 키워드</span>
+              </div>
+              <div className="flex flex-wrap justify-center gap-2">
+                {keywords.map((keyword, index) => (
+                  <span key={index} className="px-3 py-1 bg-white text-blue-700 rounded-full text-xs font-medium border border-blue-200 shadow-sm">
+                    #{keyword}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-blue-600 text-center mt-2">
+                AI가 추출한 핵심 키워드입니다 (참고용)
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 아이디어 카드들 */}

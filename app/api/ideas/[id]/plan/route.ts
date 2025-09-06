@@ -105,7 +105,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       
       // 연결 정보
       idea_id: params.id, // 아이디어 ID 연결
-      input_keywords: idea.keywords || idea.input_keywords || null,
+      input_keywords: planResult.keywords && planResult.keywords.length > 0 ? planResult.keywords : (idea.keywords || idea.input_keywords || null),
       search_query: idea.searchQuery || idea.search_query || null
     };
     

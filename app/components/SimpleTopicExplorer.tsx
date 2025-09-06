@@ -18,11 +18,13 @@ interface SimpleTopic {
 interface SimpleTopicExplorerProps {
   initialKeywords: string[];
   onFinalSelection: (context: any) => void;
+  userPrompt?: string;
 }
 
 export default function SimpleTopicExplorer({ 
   initialKeywords, 
-  onFinalSelection 
+  onFinalSelection,
+  userPrompt = ''
 }: SimpleTopicExplorerProps) {
   const [currentTopics, setCurrentTopics] = useState<SimpleTopic[]>([]);
   const [selectedPath, setSelectedPath] = useState<string[]>([]);
@@ -41,6 +43,7 @@ export default function SimpleTopicExplorer({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          prompt: userPrompt || '',
           keywords: initialKeywords,
           level: 1
         }),
@@ -76,7 +79,7 @@ export default function SimpleTopicExplorer({
     } finally {
       setIsLoading(false);
     }
-  }, [initialKeywords]);
+  }, [initialKeywords, userPrompt]);
 
   // 초기 주제 로드
   useEffect(() => {
@@ -123,42 +126,15 @@ export default function SimpleTopicExplorer({
   const handleTopicExpansion = async (topic: SimpleTopic, customKeywords?: string) => {
     setExpandingTopicId(topic.id);
     
-    // 각 주제마다 독립적인 키워드를 사용 - 기본 키워드와 사용자 입력만 결합
-    let expandKeywords = initialKeywords; // currentKeywords 대신 initialKeywords 사용
-    const keywordsToUse = customKeywords || additionalKeywords;
-
-
-    // 추가 키워드가 문장으로 입력된 경우 키워드 추출
-    if (keywordsToUse.trim()) {
-      try {
-        const keywordResponse = await fetch('/api/extract-keywords', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ text: keywordsToUse }),
-        });
-
-        if (keywordResponse.ok) {
-          const keywordData = await keywordResponse.json();
-          expandKeywords = [...initialKeywords, ...keywordData.keywords];
-        } else {
-          // 키워드 추출 실패시 기본값 사용
-          expandKeywords = [...initialKeywords, ...keywordsToUse.split(',').map(k => k.trim()).filter(k => k)];
-        }
-      } catch (error) {
-        console.error('키워드 추출 오류:', error);
-        // 에러 발생시 기본값 사용
-        expandKeywords = [...initialKeywords, ...keywordsToUse.split(',').map(k => k.trim()).filter(k => k)];
-      }
-    }
+    const additionalPrompt = customKeywords || additionalKeywords;
 
     try {
       const requestBody = {
-        keywords: expandKeywords,
+        prompt: userPrompt || '',
+        keywords: initialKeywords,
         parentTopic: topic.title,
         level: topic.level + 1,
-        additionalPrompt: keywordsToUse?.trim() || undefined
+        additionalPrompt: additionalPrompt?.trim() || undefined
       };
       
       const response = await fetch('/api/topics', {
@@ -174,10 +150,7 @@ export default function SimpleTopicExplorer({
       }
 
       const data = await response.json();
-      if (data.success && data.topics) {
-        // 확장된 키워드 정보 저장
-        const expandedKeywords = keywordsToUse.trim() ? expandKeywords : null;
-        
+      if (data.success && data.topics) {        
         // 기존 주제들에 새로운 확장 주제들을 추가
         const newTopics = data.topics.map((newTopic: SimpleTopic, index: number) => ({
           ...newTopic,
@@ -185,8 +158,8 @@ export default function SimpleTopicExplorer({
           parentId: topic.id,
           isExpanded: true,
           level: topic.level + 1,
-          expandedKeywords: expandedKeywords, // 확장에 사용된 키워드 정보 저장
-          keywords: expandedKeywords || initialKeywords // 확장된 키워드 또는 초기 키워드
+          expandedKeywords: additionalPrompt ? [additionalPrompt] : null, // 확장 프롬프트 정보 저장
+          keywords: initialKeywords // 초기 키워드 유지
         }));
         
         // 선택한 주제의 바로 다음 위치에 확장된 주제들을 삽입
@@ -198,8 +171,8 @@ export default function SimpleTopicExplorer({
         });
         setTopicCounter(prev => prev + newTopics.length);
         
-        // 전역 키워드는 업데이트하지 않음 - 각 확장이 독립적으로 동작
-        if (!customKeywords && keywordsToUse.trim()) {
+        // 확장 프롬프트 초기화
+        if (!customKeywords && additionalPrompt?.trim()) {
           setAdditionalKeywords(''); // customKeywords가 없을 때만 초기화
         }
       }
@@ -253,16 +226,16 @@ export default function SimpleTopicExplorer({
             allTopics={currentTopics}
           />
           
-          {/* 확장된 키워드 표시 */}
+          {/* 확장 프롬프트 표시 */}
           {expandedKeywords && expandedKeywords.length > 0 && (
             <div className="ml-4 sm:ml-8 mb-3">
-              <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-50 to-slate-100 rounded-lg mt-3 sm:mt-4">
-                <span className="text-slate-600 font-medium text-xs">확장:</span>
-                {expandedKeywords.map((keyword, index) => (
-                  <span key={index} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs leading-tight whitespace-nowrap">
-                    {keyword}
-                  </span>
-                ))}
+              <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-slate-100 rounded-lg mt-3 sm:mt-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-slate-600 font-medium text-xs">확장 요청:</span>
+                </div>
+                <p className="text-xs text-slate-700 italic">
+                  &quot;{expandedKeywords[0]}&quot;
+                </p>
               </div>
             </div>
           )}
@@ -317,17 +290,31 @@ export default function SimpleTopicExplorer({
         </p>
       </div>
 
-      {/* 현재 키워드 표시 */}
-      <div className="text-center mb-8">
-        <div className="flex flex-wrap justify-center items-center gap-1.5 px-4 py-3 bg-gradient-to-r from-blue-50 to-slate-100 rounded-lg mt-4 sm:mt-6 max-w-2xl mx-auto">
-          <span className="text-slate-600 font-medium text-xs">키워드:</span>
-          {currentKeywords.map((keyword, index) => (
-            <span key={index} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs leading-tight whitespace-nowrap">
-              {keyword}
-            </span>
-          ))}
+      {/* 사용자 프롬프트 표시 */}
+      {userPrompt && (
+        <div className="text-center mb-8">
+          <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-slate-100 rounded-lg mt-4 sm:mt-6 max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <span className="text-slate-600 font-medium text-sm">〈입력된 요청〉</span>
+            </div>
+            <p className="text-sm text-slate-800 leading-relaxed text-center font-semibold">
+              {userPrompt}
+            </p>
+          </div>
+          
+          {/* 화살표 및 설명 */}
+          <div className="flex flex-col items-center mt-4 mb-2">
+            <div className="flex items-center gap-2 text-slate-500">
+              <div className="w-8 h-px bg-slate-300"></div>
+              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+              <div className="w-8 h-px bg-slate-300"></div>
+            </div>
+            <p className="text-xs text-slate-500 mt-2 font-medium">AI가 분석하여 주제를 생성했습니다</p>
+          </div>
         </div>
-      </div>
+      )}
 
 
       {/* 주제 카드들 */}
@@ -529,7 +516,7 @@ function TopicCard({ topic, onDirectGenerate, onExpand, isExpanding, allTopics }
               </button>
             </div>
             <p className="text-xs text-slate-500 mt-2">
-              원하는 방향을 자연스럽게 설명하면 AI가 키워드를 추출하여 더 구체적인 주제로 확장됩니다
+              원하는 방향을 자연스럽게 설명하면 AI가 더 구체적인 주제로 확장해드립니다
             </p>
           </div>
         )}

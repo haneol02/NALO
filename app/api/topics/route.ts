@@ -5,11 +5,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { 
+      prompt = '',
       keywords = [], 
       parentTopic = null,
       level = 1,
       additionalPrompt = null
     }: { 
+      prompt?: string,
       keywords?: string[], 
       parentTopic?: string | null,
       level?: number,
@@ -17,24 +19,25 @@ export async function POST(request: NextRequest) {
     } = body;
 
     console.log('=== GPT 주제 확장 요청 ===');
+    console.log('사용자 프롬프트:', prompt);
     console.log('레벨:', level);
     console.log('키워드:', keywords);
     console.log('부모 주제:', parentTopic);
     console.log('추가 프롬프트:', additionalPrompt);
 
     // 입력 검증
-    if (!Array.isArray(keywords) || keywords.length === 0) {
+    if ((!Array.isArray(keywords) || keywords.length === 0) && !prompt.trim()) {
       return NextResponse.json(
         {
           success: false,
-          error: '키워드가 필요합니다.',
+          error: '키워드 또는 프롬프트가 필요합니다.',
         },
         { status: 400 }
       );
     }
 
     // GPT 기반 주제 생성
-    const topics = await generateTopicsFromKeywords(keywords, parentTopic || undefined, level, additionalPrompt || undefined);
+    const topics = await generateTopicsFromKeywords(keywords, parentTopic || undefined, level, additionalPrompt || undefined, prompt || undefined);
     
     console.log(`[SUCCESS] 레벨 ${level} 주제 ${topics.length}개 생성 완료`);
 

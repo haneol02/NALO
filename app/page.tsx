@@ -16,14 +16,68 @@ export default function HomePage() {
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const [topicContext, setTopicContext] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [userPrompt, setUserPrompt] = useState<string>('');
 
-  const handleStartTopicExploration = async (keywords: string[]) => {
+  const handleStartTopicExploration = async (prompt: string) => {
     console.log('=== 주제 탐색 시작 ===');
-    console.log('선택된 키워드:', keywords);
+    console.log('사용자 프롬프트:', prompt);
     
-    setSelectedKeywords(keywords);
+    setUserPrompt(prompt);
     setCurrentStep('topics');
     setError(null);
+  };
+
+  const handleDirectIdeaGeneration = async (prompt: string) => {
+    console.log('=== 직접 아이디어 생성 시작 ===');
+    console.log('사용자 프롬프트:', prompt);
+    
+    setCurrentStep('results');
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          prompt: prompt
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('아이디어 생성 API 에러:', errorData);
+        const detailMessage = errorData.details ? ` (${errorData.details})` : '';
+        throw new Error((errorData.error || '아이디어 생성에 실패했습니다.') + detailMessage);
+      }
+
+      const data = await response.json();
+      console.log('=== 생성 결과 ===');
+      console.log('생성된 아이디어 수:', data.ideas?.length || 0);
+      console.log('참고 키워드:', data.keywords || []);
+      console.log('사용된 토큰:', data.tokensUsed || 0);
+      
+      // Add unique IDs to ideas for business plan generation
+      const ideasWithIds = data.ideas?.map((idea: any, index: number) => ({
+        ...idea,
+        id: idea.id || `idea_${Date.now()}_${index}`,
+        originalPrompt: prompt,
+        keywords: idea.keywords || data.keywords || [],
+        input_keywords: idea.keywords || data.keywords || [],
+        search_query: prompt
+      })) || [];
+      
+      setIdeas(ideasWithIds);
+      setSelectedKeywords(data.keywords || []);
+    } catch (error) {
+      console.error('아이디어 생성 에러:', error);
+      setError(error instanceof Error ? error.message : '아이디어 생성 중 오류가 발생했습니다.');
+      setIdeas([]);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleTopicSelected = (context: any) => {
@@ -55,6 +109,7 @@ export default function HomePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
+          originalPrompt: userPrompt,
           keywords: selectedKeywords,
           finalTopic: contextToUse.finalTopic || contextToUse.selectedPath?.join(' → ') || '',
           topicContext: contextToUse
@@ -77,10 +132,10 @@ export default function HomePage() {
       const ideasWithIds = data.ideas?.map((idea: any, index: number) => ({
         ...idea,
         id: `idea_${Date.now()}_${index}`,
-        // 키워드와 검색 정보 추가 - 일관성을 위해 selectedKeywords 우선 사용
-        keywords: selectedKeywords,
+        // 키워드 정보 추가 - 개별 아이디어의 키워드 우선, 없으면 전체 키워드 또는 선택된 키워드 사용
+        keywords: idea.keywords || data.keywords || selectedKeywords,
         searchQuery: contextToUse.finalTopic || '',
-        input_keywords: selectedKeywords,
+        input_keywords: idea.keywords || data.keywords || selectedKeywords,
         search_query: contextToUse.finalTopic || ''
       })) || [];
       
@@ -104,6 +159,7 @@ export default function HomePage() {
     setSelectedKeywords([]);
     setTopicContext(null);
     setError(null);
+    setUserPrompt('');
   };
 
   return (
@@ -157,6 +213,7 @@ export default function HomePage() {
               onSearch={handleStartTopicExploration}
               isLoading={isGenerating}
               selectedKeywords={selectedKeywords}
+              onDirectGeneration={handleDirectIdeaGeneration}
             />
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mt-6 max-w-4xl mx-auto shadow-sm">
@@ -177,6 +234,7 @@ export default function HomePage() {
             <SimpleTopicExplorer 
               initialKeywords={selectedKeywords}
               onFinalSelection={handleTopicSelected}
+              userPrompt={userPrompt}
             />
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mt-6 max-w-4xl mx-auto shadow-sm">
@@ -250,6 +308,7 @@ export default function HomePage() {
               <ResultDisplay 
                 ideas={ideas}
                 onNewGeneration={handleNewSearch}
+                keywords={selectedKeywords}
               />
             ) : (
               <div className="text-center py-16">

@@ -13,13 +13,14 @@ export async function generateTopicsFromKeywords(
   keywords: string[], 
   parentTopic?: string, 
   level: number = 1,
-  additionalPrompt?: string
+  additionalPrompt?: string,
+  userPrompt?: string
 ): Promise<SimpleTopic[]> {
   
   try {
     // GPT-4o-mini를 사용한 동적 주제 생성
     const { generateTopicExpansions } = await import('./openai');
-    const result = await generateTopicExpansions(keywords, parentTopic, level, additionalPrompt);
+    const result = await generateTopicExpansions(keywords, parentTopic, level, additionalPrompt, userPrompt);
     
     if (result.success && result.topics.length > 0) {
       return result.topics;

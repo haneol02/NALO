@@ -6,9 +6,11 @@ const openai = new OpenAI({
 });
 
 interface GenerateIdeasParams {
-  keywords: string[];
+  keywords?: string[];
   finalTopic?: string;
   topicContext?: any;
+  prompt?: string;
+  ideaCount?: number;
 }
 
 // 메모리 기반 토큰 사용량 추적
@@ -24,7 +26,7 @@ function checkAndResetDailyUsage() {
 }
 
 export async function generateIdeas(params: GenerateIdeasParams) {
-  const { keywords, finalTopic = '', topicContext = null } = params;
+  const { keywords = [], finalTopic = '', topicContext = null, prompt = '', ideaCount = 3 } = params;
   
   // 토큰 사용량 체크 (메모리 기반)
   checkAndResetDailyUsage();
@@ -34,18 +36,83 @@ export async function generateIdeas(params: GenerateIdeasParams) {
     throw new Error('일일 토큰 사용량을 초과했습니다. 내일 다시 시도해주세요.');
   }
 
-  // 키워드와 주제 기반 컨텍스트 구성
-  const keywordContext = keywords.length > 0 ? `입력 키워드: ${keywords.join(', ')}` : '';
-  const topicContextString = finalTopic ? `최종 선택 주제: ${finalTopic}` : '';
+  // 프롬프트 직접 처리 또는 키워드 기반 처리 분기
+  let finalPrompt = '';
+  let extractedKeywords: string[] = [];
   
-  // Enhanced context utilization as per improvement plan
-  const additionalContext = topicContext ? buildEnhancedPromptContext(keywords, finalTopic, topicContext) : '';
+  if (prompt) {
+    // 프롬프트가 있는 경우 직접 처리
+    const timestamp = Date.now();
+    const randomSeed = Math.floor(Math.random() * 10000);
+    
+    finalPrompt = `사용자의 관심사와 아이디어 요청을 바탕으로 창의적인 프로젝트 아이디어를 생성하는 AI 어시스턴트입니다.
 
-  const timestamp = Date.now();
-  const randomSeed = Math.floor(Math.random() * 10000);
-  const sessionId = Math.floor(Math.random() * 100000);
-  
-  const prompt = `${SIMPLE_IDEA_PROMPT}
+사용자 요청: "${prompt}"
+
+주요 역할:
+1. 사용자의 프롬프트를 분석하여 ${ideaCount}개의 구체적이고 실현 가능한 프로젝트 아이디어를 생성합니다.
+2. 각 아이디어는 구체적이고 실행 가능해야 합니다.
+3. 각 아이디어마다 관련된 핵심 키워드 3-5개를 생성합니다.
+4. 프로젝트명은 브랜드명처럼 매력적이고 기억하기 쉽게 만듭니다.
+
+아이디어 생성 기준:
+- 현재 트렌드와 기술을 반영
+- 사용자의 관심 분야와 연관성 높은 주제
+- 실현 가능성이 있는 프로젝트
+- 차별화된 접근 방식이나 독창적인 요소 포함
+- 다양한 난이도와 규모의 아이디어 포함
+
+프로젝트명 가이드라인:
+- 브랜드명처럼 독창적이고 매력적으로 작성
+- 기억하기 쉽고 발음하기 좋은 이름
+- 프로젝트의 핵심 가치나 기능을 암시
+- 영문, 한글, 또는 조합 모두 가능
+
+응답 형식 (JSON):
+{
+  "ideas": [
+    {
+      "title": "매력적인 브랜드 스타일 프로젝트명",
+      "summary": "한 줄 요약",
+      "description": "프로젝트에 대한 간단하고 명확한 설명 (2-3문장)",
+      "coretech": ["핵심기술1", "핵심기술2", "핵심기술3"],
+      "target": "주요 타겟 사용자층",
+      "category": "해당하는 카테고리 (웹서비스, 모바일앱, AI도구, 데이터분석 등)",
+      "difficulty": 3,
+      "marketPotential": 4,
+      "competition": 2,
+      "tags": ["관련태그1", "관련태그2", "관련태그3"],
+      "challenges": ["도전과제1", "도전과제2"],
+      "successFactors": ["성공요인1", "성공요인2"],
+      "estimatedCost": 500,
+      "developmentTime": 12,
+      "keywords": ["해당 아이디어 핵심키워드1", "키워드2", "키워드3", "키워드4", "키워드5"]
+    }
+  ]
+}
+
+필드 설명:
+- difficulty: 기술 난이도 (1-5, 1=매우쉬움, 5=매우어려움)
+- marketPotential: 시장 잠재력 (1-5, 1=매우낮음, 5=매우높음)
+- competition: 경쟁 강도 (1-5, 1=경쟁매우낮음, 5=경쟁매우높음)
+- estimatedCost: 예상 개발 비용 (만원 단위)
+- developmentTime: 예상 개발 기간 (주 단위)
+
+생성 시드: ${randomSeed} (매번 다른 아이디어를 위해 사용)
+생성 시간: ${new Date(timestamp).toLocaleString()}`;
+  } else {
+    // 기존 키워드 기반 처리
+    const keywordContext = keywords.length > 0 ? `입력 키워드: ${keywords.join(', ')}` : '';
+    const topicContextString = finalTopic ? `최종 선택 주제: ${finalTopic}` : '';
+    
+    // Enhanced context utilization as per improvement plan
+    const additionalContext = topicContext ? buildEnhancedPromptContext(keywords, finalTopic, topicContext) : '';
+
+    const timestamp = Date.now();
+    const randomSeed = Math.floor(Math.random() * 10000);
+    const sessionId = Math.floor(Math.random() * 100000);
+    
+    finalPrompt = `${SIMPLE_IDEA_PROMPT}
 
 ${keywordContext}
 ${topicContextString}${additionalContext}
@@ -55,11 +122,13 @@ ${topicContextString}${additionalContext}
 생성 시드: ${randomSeed} (매번 다른 아이디어를 위해 사용)
 세션 ID: ${sessionId} (중복 방지용)
 생성 시간: ${new Date(timestamp).toLocaleString()}`;
+  }
 
   // 디버그용 프롬프트 로그 출력
   console.log('=== OpenAI API 호출 시작 ===');
+  console.log('프롬프트 유형:', prompt ? '직접 프롬프트' : '키워드 기반');
   console.log('프롬프트:');
-  console.log(prompt);
+  console.log(finalPrompt);
   console.log('========================');
 
   try {
@@ -72,7 +141,7 @@ ${topicContextString}${additionalContext}
         },
         {
           role: "user",
-          content: prompt
+          content: finalPrompt
         }
       ],
       max_tokens: 2000,
@@ -112,6 +181,7 @@ ${topicContextString}${additionalContext}
       
       return {
         ideas: parsed.ideas || [],
+        keywords: parsed.keywords || keywords,
         tokensUsed,
         success: true,
       };
@@ -220,12 +290,19 @@ function validateIdeasResponse(parsed: any): boolean {
   
   // 각 아이디어 항목 검증
   for (const idea of parsed.ideas) {
-    if (!idea.title || !idea.summary || !idea.description) {
-      console.warn('필수 아이디어 필드 누락:', idea);
+    if (!idea.title || !idea.description) {
+      console.warn('필수 아이디어 필드 누락 (title, description):', idea);
       return false;
     }
     
-    if (!Array.isArray(idea.coretech)) {
+    // summary는 선택적으로 처리
+    if (!idea.summary && !idea.description) {
+      console.warn('summary 또는 description 중 하나는 필수:', idea);
+      return false;
+    }
+    
+    // coretech는 있으면 배열이어야 함
+    if (idea.coretech && !Array.isArray(idea.coretech)) {
       console.warn('coretech가 배열이 아님:', idea);
       return false;
     }
@@ -607,6 +684,7 @@ export async function generateIdeaPlan(idea: any) {
       
       return {
         ideaPlan: parsed.ideaPlan,
+        keywords: parsed.keywords || [],
         tokensUsed,
         success: true,
       };
@@ -635,7 +713,8 @@ export async function generateTopicExpansions(
   keywords: string[], 
   parentTopic?: string, 
   level: number = 1,
-  additionalPrompt?: string
+  additionalPrompt?: string,
+  userPrompt?: string
 ): Promise<{ success: boolean; topics: any[]; tokensUsed: number }> {
   // 토큰 사용량 체크
   checkAndResetDailyUsage();
@@ -649,12 +728,12 @@ export async function generateTopicExpansions(
   let prompt = '';
   
   if (level === 1) {
-    // 1단계: 초기 주제 생성
+    // 1단계: 초기 주제 생성 (프롬프트 기반)
     prompt = `
-다음 키워드들을 바탕으로 실제 개발 가능한 3가지 프로젝트 주제를 추천해주세요:
+다음 사용자의 관심사를 바탕으로 실제 개발 가능한 3가지 프로젝트 주제를 추천해주세요:
 
-키워드: ${keywords.join(', ')}${additionalPrompt ? `
-사용자 추가 요청사항: ${additionalPrompt}` : ''}
+사용자 관심사: "${userPrompt || keywords.join(', ')}"${additionalPrompt ? `
+추가 요청사항: ${additionalPrompt}` : ''}
 
 각 주제는 다음 JSON 형식으로 작성해주세요:
 {
@@ -692,12 +771,12 @@ export async function generateTopicExpansions(
   } else {
     // 2단계 이상: 주제 확장
     prompt = `
-다음 키워드와 선택된 주제를 바탕으로 3가지 새로운 메인 프로젝트 아이디어를 생성해주세요:
+다음 사용자의 관심사와 선택된 주제를 바탕으로 3가지 새로운 메인 프로젝트 아이디어를 생성해주세요:
 
-원본 키워드: ${keywords.join(', ')}
+사용자 관심사: "${userPrompt || keywords.join(', ')}"
 기반 주제: ${parentTopic}
 확장 레벨: ${level}${additionalPrompt ? `
-사용자 추가 요청사항: ${additionalPrompt}` : ''}
+추가 요청사항: ${additionalPrompt}` : ''}
 
 각 새 프로젝트는 다음 JSON 형식으로 작성해주세요:
 {
@@ -736,6 +815,7 @@ export async function generateTopicExpansions(
   }
 
   console.log('=== 주제 확장 GPT 호출 시작 ===');
+  console.log('사용자 프롬프트:', userPrompt);
   console.log('레벨:', level);
   console.log('키워드:', keywords);
   console.log('부모 주제:', parentTopic);
