@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
     };
 
     // 2단계: 다중 검색 수행
-    const promises = [];
+    const promises: Promise<any>[] = [];
     
     // 모든 키워드 조합 생성
     const allKeywords = [

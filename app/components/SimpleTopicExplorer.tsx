@@ -103,7 +103,7 @@ export default function SimpleTopicExplorer({
     };
     
     loadTopics();
-  }, []); // 빈 배열로 마운트 시에만 실행
+  }, [initialKeywords, userPrompt]); // 의존성 배열에 사용되는 props 추가
 
   // 주제 상태 모니터링 (디버깅용)
   useEffect(() => {

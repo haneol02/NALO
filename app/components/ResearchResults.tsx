@@ -316,7 +316,7 @@ export default function ResearchResults({
                           .slice(0, 5)
                           .map(([year, count]) => (
                           <span key={year} className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
-                            {year}: {count}개
+                            {year}: {String(count)}개
                           </span>
                         ))}
                       </div>
