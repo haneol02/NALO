@@ -4,18 +4,21 @@ import { useState } from 'react';
 import IdeaGenerator from './components/IdeaGenerator';
 import SimpleTopicExplorer from './components/SimpleTopicExplorer';
 import ResultDisplay from './components/ResultDisplay';
+import ResearchResults from './components/ResearchResults';
 import AuthButton from './components/AuthButton';
-import { AlertTriangle, Frown } from 'lucide-react';
+import { AlertTriangle, Frown, Search } from 'lucide-react';
 
 import { Idea } from '@/types';
 
 export default function HomePage() {
-  const [currentStep, setCurrentStep] = useState<'input' | 'topics' | 'results'>('input');
+  const [currentStep, setCurrentStep] = useState<'input' | 'topics' | 'research' | 'results'>('input');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExtractingKeywords, setIsExtractingKeywords] = useState(false);
+  const [isResearching, setIsResearching] = useState(false);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const [topicContext, setTopicContext] = useState<any>(null);
+  const [researchData, setResearchData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [userPrompt, setUserPrompt] = useState<string>('');
 
@@ -82,19 +85,72 @@ export default function HomePage() {
   };
 
 
-  const handleTopicSelected = (context: any) => {
+  const handleTopicSelected = (context: any, withResearch: boolean = false) => {
     console.log('=== 최종 주제 선택됨 ===');
-    console.log('handleTopicSelected 호출됨 - 스택 트레이스:', new Error().stack);
     console.log('선택된 컨텍스트:', context);
+    console.log('리서치 포함 여부:', withResearch);
     
     setTopicContext(context);
-    handleGenerateIdeas(context);
+    
+    if (withResearch) {
+      // 리서치 단계로 이동
+      handleStartResearch(context);
+    } else {
+      // 바로 아이디어 생성
+      handleGenerateIdeas(context, false);
+    }
   };
 
-  const handleGenerateIdeas = async (context?: any) => {
+  const handleStartResearch = async (context: any) => {
+    console.log('=== 리서치 시작 ===');
+    setCurrentStep('research');
+    setIsResearching(true);
+    setError(null);
+    setResearchData(null);
+
+    try {
+      const researchResponse = await fetch('/api/research', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          topic: context.finalTopic,
+          includeAcademic: true
+        }),
+      });
+
+      if (!researchResponse.ok) {
+        throw new Error('리서치 API 호출에 실패했습니다.');
+      }
+
+      const researchResult = await researchResponse.json();
+      
+      if (researchResult.success) {
+        setResearchData(researchResult.data);
+        console.log('리서치 완료:', researchResult.data.summary);
+      } else {
+        throw new Error(researchResult.error || '리서치에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('리서치 오류:', error);
+      setError(error instanceof Error ? error.message : '리서치 중 오류가 발생했습니다.');
+    } finally {
+      setIsResearching(false);
+    }
+  };
+
+  const handleGenerateWithResearch = () => {
+    if (topicContext && researchData) {
+      handleGenerateIdeas(topicContext, true);
+    }
+  };
+
+  const handleGenerateIdeas = async (context?: any, withResearch: boolean = false) => {
     console.log('=== 아이디어 생성 요청 시작 (새 플로우) ===');
     console.log('handleGenerateIdeas 호출됨 - 스택 트레이스:', new Error().stack);
     console.log('현재 isGenerating 상태:', isGenerating);
+    console.log('리서치 포함 여부:', withResearch);
     
     const contextToUse = context || topicContext;
     if (!contextToUse) {
@@ -111,9 +167,13 @@ export default function HomePage() {
     setIsGenerating(true);
     setCurrentStep('results');
     setError(null);
+
+    // 리서치 데이터 사용 (이미 리서치가 완료된 경우)
+    const researchDataToUse = withResearch ? researchData : null;
     
     try {
-      // Use new /api/ideas endpoint that only generates ideas without business plans
+
+      // 아이디어 생성 (리서치 결과 포함)
       const response = await fetch('/api/ideas', {
         method: 'POST',
         headers: {
@@ -123,7 +183,8 @@ export default function HomePage() {
           originalPrompt: userPrompt,
           keywords: selectedKeywords,
           finalTopic: contextToUse.finalTopic || contextToUse.selectedPath?.join(' → ') || '',
-          topicContext: contextToUse
+          topicContext: contextToUse,
+          researchData: researchDataToUse // 리서치 결과 추가
         }),
       });
 
@@ -138,6 +199,7 @@ export default function HomePage() {
       console.log('=== 생성 결과 (아이디어만) ===');
       console.log('생성된 아이디어 수:', data.ideas?.length || 0);
       console.log('사용된 토큰:', data.tokensUsed || 0);
+      console.log('리서치 데이터 포함 여부:', !!researchDataToUse);
       
       // Add unique IDs and keywords to ideas for business plan generation
       const ideasWithIds = data.ideas?.map((idea: any, index: number) => ({
@@ -147,7 +209,8 @@ export default function HomePage() {
         keywords: idea.keywords || data.keywords || selectedKeywords,
         searchQuery: contextToUse.finalTopic || '',
         input_keywords: idea.keywords || data.keywords || selectedKeywords,
-        search_query: contextToUse.finalTopic || ''
+        search_query: contextToUse.finalTopic || '',
+        researchData: researchDataToUse // 리서치 데이터를 아이디어에 포함
       })) || [];
       
       setIdeas(ideasWithIds);
@@ -169,8 +232,13 @@ export default function HomePage() {
     setIdeas([]);
     setSelectedKeywords([]);
     setTopicContext(null);
+    setResearchData(null);
     setError(null);
     setUserPrompt('');
+  };
+
+  const handleBackToResearch = () => {
+    setCurrentStep('research');
   };
 
   return (
@@ -267,6 +335,99 @@ export default function HomePage() {
           </>
         )}
 
+        {currentStep === 'research' && (
+          <>
+            {isResearching ? (
+              // 리서치 로딩 상태
+              <div className="text-center py-16 relative">
+                {/* 파티클 효과 */}
+                <div className="absolute inset-0 overflow-hidden">
+                  {[...Array(6)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="particle"
+                      style={{
+                        width: `${Math.random() * 8 + 4}px`,
+                        height: `${Math.random() * 8 + 4}px`,
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        animationDelay: `${Math.random() * 3}s`
+                      }}
+                    ></div>
+                  ))}
+                </div>
+                
+                {/* 중앙 로딩 스피너 */}
+                <div className="relative z-10">
+                  <div className="inline-block relative mb-8">
+                    <div className="animate-spin rounded-full h-20 w-20 border-4 border-green-500 border-t-transparent loading-pulse"></div>
+                    <div className="absolute inset-2 animate-pulse rounded-full bg-gradient-to-r from-green-400 to-white opacity-20"></div>
+                  </div>
+                  
+                  <h3 className="text-lg min-[375px]:text-xl font-semibold text-slate-700 mb-2 text-center loading-pulse">
+                    시장 리서치를 수행하고 있습니다
+                  </h3>
+                  <div className="mb-2"></div>
+                  <p className="text-xs min-[375px]:text-sm sm:text-base text-slate-500 text-center">
+                    Wikipedia와 학술 논문 데이터를 분석 중입니다...
+                  </p>
+                  
+                  {/* 진행 단계 표시 */}
+                  <div className="flex justify-center items-center gap-2 mt-6">
+                    <div className="flex gap-1">
+                      {[...Array(4)].map((_, i) => (
+                        <div
+                          key={i}
+                          className={`w-2 h-2 rounded-full bg-green-400 animate-pulse`}
+                          style={{
+                            animationDelay: `${i * 0.2}s`
+                          }}
+                        ></div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : researchData ? (
+              // 리서치 결과 표시
+              <ResearchResults
+                researchData={researchData}
+                topicContext={topicContext}
+                onGenerateIdeas={handleGenerateWithResearch}
+                onNewSearch={handleNewSearch}
+                isGenerating={isGenerating}
+              />
+            ) : null}
+            
+            {error && !isResearching && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mt-6 max-w-4xl mx-auto shadow-sm">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-red-800 font-semibold mb-2">리서치 중 오류가 발생했습니다</h3>
+                    <p className="text-red-700 leading-relaxed">{error}</p>
+                    <div className="mt-4 space-x-3">
+                      <button
+                        onClick={() => handleStartResearch(topicContext)}
+                        className="btn-secondary"
+                        disabled={isResearching}
+                      >
+                        다시 시도
+                      </button>
+                      <button
+                        onClick={handleNewSearch}
+                        className="btn-primary"
+                      >
+                        새로운 검색
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
         {currentStep === 'results' && isGenerating && (
           <div className="text-center py-16 relative">
             {/* 파티클 효과 */}
@@ -352,18 +513,12 @@ export default function HomePage() {
                       </div>
                     </div>
                   )}
-                  <div className="space-x-4">
-                    <button
-                      onClick={handleBackToTopics}
-                      className="btn-secondary"
-                    >
-                      주제 선택으로 돌아가기
-                    </button>
+                  <div className="flex justify-center">
                     <button
                       onClick={handleNewSearch}
                       className="btn-primary"
                     >
-                      새로운 키워드로 시도
+                      홈으로 돌아가기
                     </button>
                   </div>
                 </div>

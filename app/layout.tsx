@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from './lib/auth/AuthProvider';
+import ErrorBoundary from './components/ErrorBoundary';
+import AutoRecovery from './components/AutoRecovery';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -40,11 +42,15 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full">
       <body className={`${inter.className} h-full antialiased`}>
-        <AuthProvider>
-          <div className="min-h-full bg-gradient-to-br from-slate-50 via-white to-blue-50">
-            {children}
-          </div>
-        </AuthProvider>
+        <AutoRecovery>
+          <ErrorBoundary>
+            <AuthProvider>
+              <div className="min-h-full bg-gradient-to-br from-slate-50 via-white to-blue-50">
+                {children}
+              </div>
+            </AuthProvider>
+          </ErrorBoundary>
+        </AutoRecovery>
       </body>
     </html>
   );

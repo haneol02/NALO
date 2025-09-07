@@ -603,7 +603,7 @@ export async function generateDetails(idea: any) {
   }
 }
 
-export async function generateIdeaPlan(idea: any) {
+export async function generateIdeaPlan(idea: any, researchData?: any) {
   // 토큰 사용량 체크 (메모리 기반)
   checkAndResetDailyUsage();
   const maxDailyTokens = 2000000; // 200만 토큰
@@ -618,7 +618,7 @@ export async function generateIdeaPlan(idea: any) {
     description: idea.description,
     coretech: idea.coretech,
     target: idea.target
-  });
+  }, researchData);
 
   console.log('=== OpenAI API 호출 시작 (기획서 생성) ===');
   console.log('프롬프트:');

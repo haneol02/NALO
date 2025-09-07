@@ -2,13 +2,33 @@
 
 import { useAuth } from '@/app/lib/auth/AuthProvider'
 import { User, LogOut } from 'lucide-react'
+import { useState, useEffect } from 'react'
 
 export default function AuthButton() {
-  const { user, loading, signIn, signOut } = useAuth()
+  const [authReady, setAuthReady] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
 
-  if (loading) {
+  // useAuth 훅을 항상 호출하도록 수정
+  const authData = useAuth()
+  const { user, loading, signIn, signOut } = authData || { 
+    user: null, 
+    loading: false, 
+    signIn: () => {}, 
+    signOut: () => {} 
+  }
+
+  useEffect(() => {
+    // 컴포넌트가 마운트되면 인증 준비 완료
+    const timer = setTimeout(() => {
+      setAuthReady(true)
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (!authReady || loading) {
     return (
-      <div className="animate-pulse">
+      <div className="animate-pulse" data-testid="auth-button">
         <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
       </div>
     )
@@ -16,7 +36,7 @@ export default function AuthButton() {
 
   if (user) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" data-testid="auth-button">
         <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-full">
           <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
             <User className="w-3 h-3 text-white" />
@@ -40,6 +60,7 @@ export default function AuthButton() {
     <button
       onClick={signIn}
       className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm"
+      data-testid="auth-button"
     >
       <User className="w-4 h-4" />
       로그인

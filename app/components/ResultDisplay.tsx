@@ -10,7 +10,8 @@ import {
   AlertTriangle, 
   Target,
   CheckCircle,
-  BarChart3
+  BarChart3,
+  Home
 } from 'lucide-react';
 
 import { Idea } from '@/types';
@@ -441,8 +442,17 @@ export default function ResultDisplay({ ideas, onNewGeneration, keywords = [] }:
         })}
       </div>
 
-      {/* 액션 버튼들 */}
-      <div className="text-center space-y-4">
+      {/* 액션 버튼들 - PC와 모바일 통합 */}
+      <div className="flex justify-center items-center space-x-4 mt-8">
+        <button
+          onClick={() => {
+            window.location.href = '/';
+          }}
+          className="btn-secondary text-sm sm:text-base px-4 sm:px-6 flex items-center gap-2"
+        >
+          <Home className="w-4 h-4" />
+          홈으로
+        </button>
         <button
           onClick={() => {
             onNewGeneration();

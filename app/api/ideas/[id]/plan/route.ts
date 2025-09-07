@@ -24,10 +24,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     console.log(`=== 선택된 아이디어 기획서 생성: ${idea.title} ===`);
     console.log('아이디어 ID:', params.id);
     console.log('아이디어 내용:', idea);
+    console.log('리서치 데이터 포함:', !!idea.researchData);
     console.log('=======================================');
     
-    // 선택된 아이디어에 대해서만 기획서 생성
-    const planResult = await generateIdeaPlan(idea);
+    // 선택된 아이디어에 대해서만 기획서 생성 (리서치 데이터 포함)
+    const planResult = await generateIdeaPlan(idea, idea.researchData);
     
     if (!planResult.ideaPlan) {
       throw new Error('기획서 생성에 실패했습니다.');

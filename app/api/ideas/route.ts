@@ -63,11 +63,12 @@ export async function POST(request: NextRequest) {
 
     // 새로운 아이디어 생성 로직
     const { generateIdeas } = await import('@/app/lib/openai');
-    const { keywords = [], topicContext = null, finalTopic = '', originalPrompt = '' }: { 
+    const { keywords = [], topicContext = null, finalTopic = '', originalPrompt = '', researchData = null }: { 
       keywords?: string[], 
       topicContext?: any, 
       finalTopic?: string,
-      originalPrompt?: string
+      originalPrompt?: string,
+      researchData?: any
     } = body;
 
     // 입력 검증
@@ -86,23 +87,69 @@ export async function POST(request: NextRequest) {
     console.log('최종 주제:', finalTopic);
     console.log('사용자 키워드:', keywords);
     console.log('주제 컨텍스트:', topicContext);
+    console.log('리서치 데이터 포함:', !!researchData);
     console.log('=========================');
 
     // 선택된 주제를 반영한 구체적인 프롬프트 생성
     let specificPrompt = '';
+    let researchContext = '';
+    
+    // 리서치 데이터가 있는 경우 컨텍스트 추가
+    if (researchData) {
+      const { analysis, sources } = researchData;
+      
+      let contextParts = [];
+      
+      // Wikipedia 정보 추가
+      if (sources?.wikipedia?.success && sources.wikipedia.best?.found) {
+        const wiki = sources.wikipedia.best.mainPage;
+        contextParts.push(`기본 정보: ${wiki?.summary?.substring(0, 200)}...`);
+      }
+      
+      // 학술 정보 추가
+      if (sources?.openalex?.success && sources.openalex.best?.found) {
+        const academic = sources.openalex.best;
+        if (academic.trends?.concepts?.length > 0) {
+          const topConcepts = academic.trends.concepts.slice(0, 3).map((c: any) => c.name).join(', ');
+          contextParts.push(`관련 학술 분야: ${topConcepts}`);
+        }
+        contextParts.push(`최근 논문 수: ${academic.papers?.length || 0}개`);
+      }
+      
+      // 분석 결과 추가
+      if (analysis) {
+        if (analysis.marketSize) contextParts.push(`시장 규모: ${analysis.marketSize}`);
+        if (analysis.competitionLevel) contextParts.push(`경쟁 수준: ${analysis.competitionLevel}`);
+        if (analysis.trendDirection) contextParts.push(`트렌드: ${analysis.trendDirection}`);
+        if (analysis.recommendedStrategy) contextParts.push(`추천 전략: ${analysis.recommendedStrategy}`);
+        if (analysis.differentiationOpportunities?.length > 0) {
+          contextParts.push(`차별화 기회: ${analysis.differentiationOpportunities.slice(0, 2).join(', ')}`);
+        }
+      }
+      
+      if (contextParts.length > 0) {
+        researchContext = `
+
+리서치 결과:
+${contextParts.map(part => `- ${part}`).join('\n')}
+
+위 리서치 결과를 바탕으로 현실적이고 차별화된 아이디어를 생성해주세요.`;
+      }
+    }
+    
     if (finalTopic && originalPrompt) {
-      // 주제 선택 후 생성: 원본 프롬프트 + 선택된 주제
+      // 주제 선택 후 생성: 원본 프롬프트 + 선택된 주제 + 리서치 결과
       specificPrompt = `사용자 요청: "${originalPrompt}"
 
-선택된 주제: "${finalTopic}"
+선택된 주제: "${finalTopic}"${researchContext}
 
 위 사용자 요청에서 "${finalTopic}" 주제를 선택했습니다. 이 특정 주제에 대한 구체적이고 실현 가능한 프로젝트 아이디어 1개를 생성해주세요.`;
     } else if (originalPrompt) {
       // 바로 생성: 원본 프롬프트만 사용
-      specificPrompt = originalPrompt;
+      specificPrompt = originalPrompt + researchContext;
     } else if (finalTopic) {
       // 주제만 있는 경우
-      specificPrompt = `${finalTopic}에 대한 프로젝트 아이디어를 생성해주세요.`;
+      specificPrompt = `${finalTopic}에 대한 프로젝트 아이디어를 생성해주세요.${researchContext}`;
     }
 
     // 주제 선택 후 생성인지 바로 생성인지에 따라 아이디어 개수 결정

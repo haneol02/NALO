@@ -361,8 +361,63 @@ export function createDetailedPrompt(idea: SimpleIdeaFormat): string {
     .replace('{target}', idea.target);
 }
 
-export function createIdeaPlanPrompt(idea: SimpleIdeaFormat): string {
-  return IDEA_PLAN_PROMPT
+export function createIdeaPlanPrompt(idea: SimpleIdeaFormat, researchData?: any): string {
+  // 리서치 데이터가 있는 경우 컨텍스트 추가
+  let researchContext = '';
+  
+  if (researchData) {
+    const { analysis, sources } = researchData;
+    
+    let contextParts = [];
+    
+    // Wikipedia 정보 추가
+    if (sources?.wikipedia?.success && sources.wikipedia.best?.found) {
+      const wiki = sources.wikipedia.best.mainPage;
+      contextParts.push(`기본 정보: ${wiki?.summary?.substring(0, 300)}...`);
+    }
+    
+    // 학술 정보 추가
+    if (sources?.openalex?.success && sources.openalex.best?.found) {
+      const academic = sources.openalex.best;
+      if (academic.trends?.concepts?.length > 0) {
+        const topConcepts = academic.trends.concepts.slice(0, 3).map((c: any) => c.name).join(', ');
+        contextParts.push(`관련 학술 분야: ${topConcepts}`);
+      }
+      contextParts.push(`최근 논문 수: ${academic.papers?.length || 0}개`);
+    }
+    
+    // 분석 결과 추가
+    if (analysis) {
+      if (analysis.marketSize) contextParts.push(`시장 규모: ${analysis.marketSize}`);
+      if (analysis.competitionLevel) contextParts.push(`경쟁 수준: ${analysis.competitionLevel}`);
+      if (analysis.trendDirection) contextParts.push(`트렌드: ${analysis.trendDirection}`);
+      if (analysis.implementationComplexity) contextParts.push(`구현 복잡도: ${analysis.implementationComplexity}`);
+      if (analysis.keyInsights?.length > 0) {
+        const insights = analysis.keyInsights.map((insight: any) => insight.insight).join(' ');
+        contextParts.push(`핵심 인사이트: ${insights.substring(0, 200)}...`);
+      }
+      if (analysis.recommendedStrategy) {
+        contextParts.push(`추천 전략: ${analysis.recommendedStrategy.substring(0, 150)}...`);
+      }
+    }
+    
+    if (contextParts.length > 0) {
+      researchContext = `
+
+*** 시장 리서치 결과 ***
+${contextParts.map(part => `- ${part}`).join('\n')}
+
+위 리서치 결과를 바탕으로 다음을 기획서에 반영해주세요:
+- 시장 분석: 실제 시장 현황과 경쟁사 분석을 구체적으로 작성
+- 차별화 전략: 현재 시장 상황을 고려한 차별화 포인트 제시
+- 위험 요소: 실제 시장 데이터를 기반으로 한 현실적인 위험 분석
+- SWOT 분석: 리서치된 정보를 바탕으로 한 구체적인 강점/약점 분석
+- 기술적 요구사항: 관련 학술 연구를 고려한 기술 스택 제안
+- ROI 예측: 시장 성숙도와 경쟁 수준을 고려한 현실적인 수익성 분석`;
+    }
+  }
+  
+  return (IDEA_PLAN_PROMPT + researchContext)
     .replace('{title}', idea.title)
     .replace('{summary}', idea.summary) 
     .replace('{description}', idea.description)

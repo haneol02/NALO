@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Lightbulb, Play, Search, Home } from 'lucide-react';
 
 interface SimpleTopic {
@@ -17,7 +17,7 @@ interface SimpleTopic {
 
 interface SimpleTopicExplorerProps {
   initialKeywords: string[];
-  onFinalSelection: (context: any) => void;
+  onFinalSelection: (context: any, withResearch?: boolean) => void;
   userPrompt?: string;
   isGeneratingIdeas?: boolean; // 아이디어 생성 중 상태
 }
@@ -35,65 +35,82 @@ export default function SimpleTopicExplorer({
   const [expandingTopicId, setExpandingTopicId] = useState<string | null>(null);
   const [additionalKeywords, setAdditionalKeywords] = useState<string>('');
   const [topicCounter, setTopicCounter] = useState<number>(1);
+  const [hasLoadedTopics, setHasLoadedTopics] = useState<boolean>(false);
+  const loadingRef = useRef<boolean>(false);
+  const mountedRef = useRef<boolean>(false);
 
-  const loadInitialTopics = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/topics', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: userPrompt || '',
-          keywords: initialKeywords,
-          level: 1
-        }),
-      });
 
-      if (!response.ok) {
-        throw new Error('주제 로드 실패');
-      }
-
-      const data = await response.json();
-      console.log('초기 주제 API 응답:', data);
-      
-      if (data.success && data.topics) {
-        console.log('주제 데이터 설정:', data.topics);
-        const numberedTopics = data.topics.map((topic: SimpleTopic, index: number) => ({
-          ...topic,
-          id: `topic_${index + 1}`,
-          level: 1,
-          keywords: initialKeywords
-        }));
-        setCurrentTopics(numberedTopics);
-        setTopicCounter(numberedTopics.length + 1);
-        setSelectedPath([]);
-      } else {
-        console.error('유효하지 않은 응답 구조:', data);
-        throw new Error('유효하지 않은 응답');
-      }
-    } catch (error) {
-      console.error('초기 주제 로드 실패:', error);
-      // 오류 처리 - 더미 데이터 대신 빈 값
-      setCurrentTopics([]);
-      setTopicCounter(1);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [initialKeywords, userPrompt]);
-
-  // 초기 주제 로드
+  // 컴포넌트 마운트 시에만 실행
   useEffect(() => {
-    loadInitialTopics();
-  }, [loadInitialTopics]);
+    if (mountedRef.current) return; // 이미 마운트됨
+    mountedRef.current = true;
+    
+    const now = Date.now();
+    console.log(`[${now}] 컴포넌트 첫 마운트 - 주제 로딩 시작`);
+    
+    if (!initialKeywords.length && !userPrompt) {
+      console.log(`[${now}] 키워드도 프롬프트도 없음 - 스킵`);
+      return;
+    }
+    
+    // 함수를 useEffect 내부에서 직접 정의
+    const loadTopics = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/topics', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: userPrompt || '',
+            keywords: initialKeywords,
+            level: 1
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('주제 로드 실패');
+        }
+
+        const data = await response.json();
+        console.log('초기 주제 API 응답:', data);
+        
+        if (data.success && data.topics) {
+          console.log('주제 데이터 설정:', data.topics);
+          const numberedTopics = data.topics.map((topic: SimpleTopic, index: number) => ({
+            ...topic,
+            id: `topic_${index + 1}`,
+            level: 1,
+            keywords: initialKeywords
+          }));
+          setCurrentTopics(numberedTopics);
+          setTopicCounter(numberedTopics.length + 1);
+          setSelectedPath([]);
+          setHasLoadedTopics(true); // 로딩 완료 플래그 설정
+        } else {
+          console.error('유효하지 않은 응답 구조:', data);
+          throw new Error('유효하지 않은 응답');
+        }
+      } catch (error) {
+        console.error('초기 주제 로드 실패:', error);
+        setCurrentTopics([]);
+        setTopicCounter(1);
+      } finally {
+        setIsLoading(false);
+        loadingRef.current = false; // 로딩 완료 후 리셋
+      }
+    };
+    
+    loadTopics();
+  }, []); // 빈 배열로 마운트 시에만 실행
 
   // 주제 상태 모니터링 (디버깅용)
   useEffect(() => {
     console.log('currentTopics 상태 업데이트:', currentTopics);
   }, [currentTopics]);
 
-  const handleDirectIdeaGeneration = (topic: SimpleTopic) => {
+  const handleDirectIdeaGeneration = (topic: SimpleTopic, withResearch: boolean = false) => {
     // 이미 로딩 중이면 중복 실행 방지
     if (isLoading || isGeneratingIdeas) {
       console.log('이미 아이디어 생성 중이므로 중복 실행 방지');
@@ -128,7 +145,7 @@ export default function SimpleTopicExplorer({
       }
     };
     
-    onFinalSelection(enhancedContext);
+    onFinalSelection(enhancedContext, withResearch);
   };
 
   const handleTopicExpansion = async (topic: SimpleTopic, customKeywords?: string) => {
@@ -226,7 +243,7 @@ export default function SimpleTopicExplorer({
           {/* 베이스 주제 */}
           <TopicCard
             topic={baseTopic}
-            onDirectGenerate={() => handleDirectIdeaGeneration(baseTopic)}
+            onDirectGenerate={(withResearch) => handleDirectIdeaGeneration(baseTopic, withResearch)}
             onExpand={(keywords) => {
               handleTopicExpansion(baseTopic, keywords);
             }}
@@ -255,7 +272,7 @@ export default function SimpleTopicExplorer({
                 <TopicCard
                   key={childTopic.id}
                   topic={childTopic}
-                  onDirectGenerate={() => handleDirectIdeaGeneration(childTopic)}
+                  onDirectGenerate={(withResearch) => handleDirectIdeaGeneration(childTopic, withResearch)}
                   onExpand={(keywords) => {
                     handleTopicExpansion(childTopic, keywords);
                   }}
@@ -368,7 +385,7 @@ export default function SimpleTopicExplorer({
 // 주제 카드 컴포넌트
 interface TopicCardProps {
   topic: SimpleTopic;
-  onDirectGenerate: () => void;
+  onDirectGenerate: (withResearch?: boolean) => void;
   onExpand: (keywords?: string) => void;
   isExpanding: boolean;
   allTopics: SimpleTopic[];
@@ -454,9 +471,9 @@ function TopicCard({ topic, onDirectGenerate, onExpand, isExpanding, allTopics }
                 )}
               </div>
               
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 justify-end sm:justify-start">
                 <button
-                  onClick={onDirectGenerate}
+                  onClick={() => onDirectGenerate(true)} // 리서치 포함 생성
                   disabled={isExpanding}
                   className="btn-primary btn-click px-3 sm:px-4 py-2 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -502,7 +519,7 @@ function TopicCard({ topic, onDirectGenerate, onExpand, isExpanding, allTopics }
             <div className="flex gap-2">
               <textarea
                 placeholder="어떤 방향으로 확장하고 싶으신지 자유롭게 설명해주세요 (예: 모바일 앱으로 만들고 싶고, AI 기능을 추가하고 싶어요)"
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm min-h-[60px] resize-none selectable"
+                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm min-h-[80px] sm:min-h-[60px] resize-none selectable placeholder:text-xs"
                 value={expandKeywords}
                 onChange={(e) => setExpandKeywords(e.target.value)}
               />
