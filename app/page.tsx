@@ -1,17 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import IdeaGenerator from './components/IdeaGenerator';
 import SimpleTopicExplorer from './components/SimpleTopicExplorer';
 import ResultDisplay from './components/ResultDisplay';
 import ResearchResults from './components/ResearchResults';
+import MindmapViewer from './components/MindmapViewer';
 import AuthButton from './components/AuthButton';
 import { AlertTriangle, Frown, Search } from 'lucide-react';
 
 import { Idea } from '@/types';
 
 export default function HomePage() {
-  const [currentStep, setCurrentStep] = useState<'input' | 'topics' | 'research' | 'results'>('input');
+  const [currentStep, setCurrentStep] = useState<'input' | 'topics' | 'mindmap' | 'research' | 'results'>('input');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExtractingKeywords, setIsExtractingKeywords] = useState(false);
   const [isResearching, setIsResearching] = useState(false);
@@ -28,6 +29,15 @@ export default function HomePage() {
     
     setUserPrompt(prompt);
     setCurrentStep('topics');
+    setError(null);
+  };
+
+  const handleMindmapGeneration = async (prompt: string) => {
+    console.log('=== 마인드맵 생성 시작 ===');
+    console.log('사용자 프롬프트:', prompt);
+    
+    setUserPrompt(prompt);
+    setCurrentStep('mindmap');
     setError(null);
   };
 
@@ -241,56 +251,199 @@ export default function HomePage() {
     setCurrentStep('research');
   };
 
+  const handleMindmapToPlan = async (mindmapData: { nodes: any[]; edges: any[] }) => {
+    console.log('=== 마인드맵에서 기획서 생성 시작 ===');
+    console.log('마인드맵 데이터:', mindmapData);
+    
+    setCurrentStep('results');
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      // 마인드맵 데이터를 텍스트로 변환
+      const mindmapText = convertMindmapToText(mindmapData);
+      
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          prompt: `${userPrompt}\n\n마인드맵 구조:\n${mindmapText}`
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('기획서 생성 API 에러:', errorData);
+        const detailMessage = errorData.details ? ` (${errorData.details})` : '';
+        throw new Error((errorData.error || '기획서 생성에 실패했습니다.') + detailMessage);
+      }
+
+      const data = await response.json();
+      console.log('=== 기획서 생성 결과 ===');
+      console.log('생성된 아이디어 수:', data.ideas?.length || 0);
+      
+      const ideasWithIds = data.ideas?.map((idea: any, index: number) => ({
+        ...idea,
+        id: idea.id || `mindmap_idea_${Date.now()}_${index}`,
+        originalPrompt: userPrompt,
+        keywords: idea.keywords || data.keywords || [],
+        input_keywords: idea.keywords || data.keywords || [],
+        search_query: userPrompt,
+        mindmapData: mindmapData
+      })) || [];
+      
+      setIdeas(ideasWithIds);
+    } catch (error) {
+      console.error('마인드맵 기획서 생성 에러:', error);
+      setError(error instanceof Error ? error.message : '기획서 생성 중 오류가 발생했습니다.');
+      setIdeas([]);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // 마인드맵 데이터를 텍스트로 변환하는 헬퍼 함수
+  const convertMindmapToText = (mindmapData: { nodes: any[]; edges: any[] }) => {
+    const { nodes, edges } = mindmapData;
+    
+    // 루트 노드 찾기
+    const rootNode = nodes.find(node => node.data.type === 'root') || nodes[0];
+    const result: string[] = [];
+    
+    // 노드들을 계층 구조로 변환
+    const visited = new Set();
+    const buildHierarchy = (nodeId: string, level: number = 0) => {
+      if (visited.has(nodeId)) return;
+      visited.add(nodeId);
+      
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      
+      const indent = '  '.repeat(level);
+      result.push(`${indent}- ${node.data.label} (${node.data.type})`);
+      if (node.data.description) {
+        result.push(`${indent}  ${node.data.description}`);
+      }
+      
+      // 자식 노드들 찾기
+      const childEdges = edges.filter(edge => edge.source === nodeId);
+      childEdges.forEach(edge => {
+        buildHierarchy(edge.target, level + 1);
+      });
+    };
+    
+    buildHierarchy(rootNode.id);
+    return result.join('\n');
+  };
+
   return (
     <main className="min-h-screen page-transition no-select">
       {/* Header */}
-      <header className="relative text-center py-12 sm:py-20 px-4 bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden">
+      <header className={`
+        relative px-4 bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden
+        transition-all duration-700 ease-in-out
+        ${currentStep === 'input' 
+          ? 'text-center py-12 sm:py-20' 
+          : 'py-3 sm:py-4'
+        }
+      `}>
         {/* Background decoration */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100/20 via-transparent to-transparent"></div>
         
-        {/* Auth Button - Fixed positioned */}
-        <div className="absolute top-4 right-4 z-10">
-          <AuthButton />
-        </div>
-        
-        <div className="relative max-w-4xl mx-auto">
-          <div className="mb-12"></div>
-          
-          <div className="space-y-4 sm:space-y-6">
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black mb-2 sm:mb-4 tracking-tight">
-              <span className="gradient-text">NALO</span>
-            </h1>
-            <div className="mb-2"></div>
-            <p className="text-sm min-[375px]:text-base min-[425px]:text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl text-slate-700 mb-2 sm:mb-3 font-bold tracking-tight">
-              날로 먹는 프로젝트 기획
-            </p>
-            <div className="max-w-2xl mx-auto">
-              <p className="text-xs min-[375px]:text-sm min-[425px]:text-base sm:text-lg text-slate-600 leading-relaxed text-center px-4">
-                AI가 도와주는 스마트한 프로젝트 기획 솔루션
-              </p>
-              <div className="flex items-center justify-center gap-1 min-[375px]:gap-2 sm:gap-3 mt-4 text-[9px] min-[375px]:text-[10px] sm:text-sm text-slate-500 px-4 flex-wrap">
-                <div className="flex items-center gap-1">
-                  <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full"></div>
-                  <span>문장 입력</span>
-                </div>
-                <div className="w-2 min-[375px]:w-3 sm:w-4 h-px bg-slate-300"></div>
-                <div className="flex items-center gap-1">
-                  <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full"></div>
-                  <span>AI 분석</span>
-                </div>
-                <div className="w-2 min-[375px]:w-3 sm:w-4 h-px bg-slate-300"></div>
-                <div className="flex items-center gap-1">
-                  <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-600 rounded-full"></div>
-                  <span>기획서 완성</span>
+        {currentStep === 'input' ? (
+          // 메인 페이지 헤더 (기존 스타일)
+          <>
+            {/* Auth Button - Fixed positioned */}
+            <div className="absolute top-4 right-4 z-10">
+              <AuthButton />
+            </div>
+            
+            <div className="relative max-w-4xl mx-auto">
+              <div className="mb-12"></div>
+              
+              <div className="space-y-4 sm:space-y-6">
+                <h1 className="text-4xl sm:text-6xl md:text-7xl font-black mb-2 sm:mb-4 tracking-tight">
+                  <span className="gradient-text">NALO</span>
+                </h1>
+                <div className="mb-2"></div>
+                <p className="text-sm min-[375px]:text-base min-[425px]:text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl text-slate-700 mb-2 sm:mb-3 font-bold tracking-tight">
+                  날로 먹는 프로젝트 기획
+                </p>
+                <div className="max-w-2xl mx-auto">
+                  <p className="text-xs min-[375px]:text-sm min-[425px]:text-base sm:text-lg text-slate-600 leading-relaxed text-center px-4">
+                    AI가 도와주는 스마트한 프로젝트 기획 솔루션
+                  </p>
+                  <div className="flex items-center justify-center gap-1 min-[375px]:gap-2 sm:gap-3 mt-4 text-[9px] min-[375px]:text-[10px] sm:text-sm text-slate-500 px-4 flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full"></div>
+                      <span>문장 입력</span>
+                    </div>
+                    <div className="w-2 min-[375px]:w-3 sm:w-4 h-px bg-slate-300"></div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full"></div>
+                      <span>AI 분석</span>
+                    </div>
+                    <div className="w-2 min-[375px]:w-3 sm:w-4 h-px bg-slate-300"></div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-1 h-1 min-[375px]:w-1.5 min-[375px]:h-1.5 sm:w-2 sm:h-2 bg-blue-600 rounded-full"></div>
+                      <span>기획서 완성</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+          </>
+        ) : (
+          // 컴팩트 헤더 (한 줄 레이아웃)
+          <div className="relative max-w-7xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight">
+                  <span className="gradient-text">NALO</span>
+                </h1>
+                <div className="hidden sm:block w-px h-6 bg-slate-300"></div>
+                <p className="hidden sm:block text-sm text-slate-600 font-medium">
+                  날로 먹는 프로젝트 기획
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <p className="hidden md:block text-xs text-slate-500">
+                  AI가 도와주는 스마트한 프로젝트 기획 솔루션
+                </p>
+                <AuthButton />
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
+      {/* Mindmap - Full Screen */}
+      {currentStep === 'mindmap' && (
+        <>
+          <MindmapViewer
+            initialPrompt={userPrompt}
+            onGeneratePlan={handleMindmapToPlan}
+            onBack={handleNewSearch}
+          />
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mt-6 max-w-4xl mx-auto shadow-sm">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-red-800 font-semibold mb-2">오류가 발생했습니다</h3>
+                  <p className="text-red-700 leading-relaxed">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 pb-8 sm:pb-16">
+      {currentStep !== 'mindmap' && (
+        <div className="max-w-6xl mx-auto px-4 pb-8 sm:pb-16">
         {currentStep === 'input' && (
           <>
             <IdeaGenerator 
@@ -298,6 +451,7 @@ export default function HomePage() {
               isLoading={isGenerating}
               selectedKeywords={selectedKeywords}
               onDirectGeneration={handleDirectIdeaGeneration}
+              onMindmapGeneration={handleMindmapGeneration}
             />
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mt-6 max-w-4xl mx-auto shadow-sm">
@@ -526,7 +680,8 @@ export default function HomePage() {
             )}
           </>
         )}
-      </div>
+        </div>
+      )}
 
     </main>
   );
