@@ -19,12 +19,14 @@ interface SimpleTopicExplorerProps {
   initialKeywords: string[];
   onFinalSelection: (context: any) => void;
   userPrompt?: string;
+  isGeneratingIdeas?: boolean; // 아이디어 생성 중 상태
 }
 
 export default function SimpleTopicExplorer({ 
   initialKeywords, 
   onFinalSelection,
-  userPrompt = ''
+  userPrompt = '',
+  isGeneratingIdeas = false
 }: SimpleTopicExplorerProps) {
   const [currentTopics, setCurrentTopics] = useState<SimpleTopic[]>([]);
   const [selectedPath, setSelectedPath] = useState<string[]>([]);
@@ -92,6 +94,12 @@ export default function SimpleTopicExplorer({
   }, [currentTopics]);
 
   const handleDirectIdeaGeneration = (topic: SimpleTopic) => {
+    // 이미 로딩 중이면 중복 실행 방지
+    if (isLoading || isGeneratingIdeas) {
+      console.log('이미 아이디어 생성 중이므로 중복 실행 방지');
+      return;
+    }
+    
     const newPath = [...selectedPath, topic.title];
     
     // Enhanced context generation as per improvement plan
@@ -449,7 +457,8 @@ function TopicCard({ topic, onDirectGenerate, onExpand, isExpanding, allTopics }
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={onDirectGenerate}
-                  className="btn-primary btn-click px-3 sm:px-4 py-2 text-xs sm:text-sm flex items-center gap-1 sm:gap-2"
+                  disabled={isExpanding}
+                  className="btn-primary btn-click px-3 sm:px-4 py-2 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Play className="w-3 sm:w-4 h-3 sm:h-4" />
                   <span className="hidden min-[375px]:inline">아이디어 생성</span>

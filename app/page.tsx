@@ -84,6 +84,7 @@ export default function HomePage() {
 
   const handleTopicSelected = (context: any) => {
     console.log('=== 최종 주제 선택됨 ===');
+    console.log('handleTopicSelected 호출됨 - 스택 트레이스:', new Error().stack);
     console.log('선택된 컨텍스트:', context);
     
     setTopicContext(context);
@@ -92,10 +93,18 @@ export default function HomePage() {
 
   const handleGenerateIdeas = async (context?: any) => {
     console.log('=== 아이디어 생성 요청 시작 (새 플로우) ===');
+    console.log('handleGenerateIdeas 호출됨 - 스택 트레이스:', new Error().stack);
+    console.log('현재 isGenerating 상태:', isGenerating);
     
     const contextToUse = context || topicContext;
     if (!contextToUse) {
       setError('주제 정보가 없습니다.');
+      return;
+    }
+    
+    // 이미 생성 중이면 중복 실행 방지
+    if (isGenerating) {
+      console.log('이미 생성 중이므로 중복 실행 방지');
       return;
     }
     
@@ -242,6 +251,7 @@ export default function HomePage() {
               initialKeywords={selectedKeywords}
               onFinalSelection={handleTopicSelected}
               userPrompt={userPrompt}
+              isGeneratingIdeas={isGenerating}
             />
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mt-6 max-w-4xl mx-auto shadow-sm">

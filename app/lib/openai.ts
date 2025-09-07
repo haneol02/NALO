@@ -771,34 +771,34 @@ export async function generateTopicExpansions(
   } else {
     // 2단계 이상: 주제 확장
     prompt = `
-다음 사용자의 관심사와 선택된 주제를 바탕으로 3가지 새로운 메인 프로젝트 아이디어를 생성해주세요:
+다음 사용자의 관심사와 선택된 주제, 추가 요청사항을 모두 종합하여 3가지 새로운 프로젝트 주제를 생성해주세요:
 
 사용자 관심사: "${userPrompt || keywords.join(', ')}"
-기반 주제: ${parentTopic}
+선택된 주제: ${parentTopic}
 확장 레벨: ${level}${additionalPrompt ? `
 추가 요청사항: ${additionalPrompt}` : ''}
 
-각 새 프로젝트는 다음 JSON 형식으로 작성해주세요:
+위 모든 정보를 종합하여 완전히 새로운 3가지 프로젝트 주제를 다음 JSON 형식으로 작성해주세요:
 {
   "topics": [
     {
       "id": "expanded_${level}_1",
-      "title": "완전히 새로운 메인 프로젝트 제목",
-      "description": "이 프로젝트가 해결하는 주요 문제와 가치",
+      "title": "새로운 프로젝트 제목",
+      "description": "이 프로젝트가 무엇을 하는지, 어떤 가치를 제공하는지 설명",
       "category": "프로젝트 분야",
       "level": ${level}
     },
     {
       "id": "expanded_${level}_2",
-      "title": "완전히 새로운 메인 프로젝트 제목",
-      "description": "이 프로젝트가 해결하는 주요 문제와 가치", 
+      "title": "새로운 프로젝트 제목",
+      "description": "이 프로젝트가 무엇을 하는지, 어떤 가치를 제공하는지 설명", 
       "category": "프로젝트 분야",
       "level": ${level}
     },
     {
       "id": "expanded_${level}_3",
-      "title": "완전히 새로운 메인 프로젝트 제목",
-      "description": "이 프로젝트가 해결하는 주요 문제와 가치",
+      "title": "새로운 프로젝트 제목",
+      "description": "이 프로젝트가 무엇을 하는지, 어떤 가치를 제공하는지 설명",
       "category": "프로젝트 분야", 
       "level": ${level}
     }
@@ -806,11 +806,11 @@ export async function generateTopicExpansions(
 }
 
 중요 요구사항:
-- "${parentTopic}"과 관련이 있지만 완전히 독립적인 새로운 프로젝트여야 함
-- 세부 기능이 아닌, 그 자체로 완성된 메인 프로젝트 아이디어여야 함
-- 각각 다른 시장이나 사용자층을 타겟으로 해야 함${additionalPrompt ? `
-- 사용자의 추가 요청사항(${additionalPrompt})을 최대한 반영하여 생성` : ''}
-- 실제로 창업이나 사이드프로젝트로 가능한 수준
+- 사용자의 원래 관심사 + 선택된 주제 + 추가 요청사항을 모두 반영한 새로운 프로젝트여야 함
+- "${parentTopic}"과 연관되지만 완전히 독립적인 새로운 프로젝트 아이디어
+- 각각 다른 접근 방식이나 해결 방법을 제시하는 프로젝트${additionalPrompt ? `
+- 사용자의 추가 요청사항(${additionalPrompt})을 핵심적으로 반영하여 생성` : ''}
+- 실제로 구현 가능한 현실적인 프로젝트
 - 제목은 15자 이내, 설명은 50자 이내로 간결하게`;
   }
 
