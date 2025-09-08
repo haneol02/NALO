@@ -669,7 +669,7 @@ ${plan.roi_prediction || '데이터 없음'}
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto p-4" id="pdf-content">
+      <div className="w-full max-w-4xl mx-auto p-4" id="pdf-content">
 
         {/* Header - 데스크톱용 */}
         <header className="mb-8 mt-8 sm:mt-12">
