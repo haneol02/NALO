@@ -369,10 +369,11 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
   // 노드 더블클릭으로 편집 모드
   const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNodeId(node.id);
-    setIsFloatingPanelOpen(true);
+    setIsFloatingPanelOpen(false);
     setIsEditingNode(true);
     setEditingNodeText(node.data.label);
     setEditingNodeDescription(node.data.description || '');
+    setEditingNodeType(node.data.type);
   }, []);
 
   // 새 노드 추가
@@ -1167,6 +1168,13 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
                               </button>
                               <button
                                 onClick={() => {
+                                  // AI 확장 모달 상태 초기화
+                                  setAiExpandMode('simple');
+                                  setAiExpandCategory('mixed');
+                                  setAiExpandPrompt('');
+                                  setAiExpandScope('broad');
+                                  setAiExpandCount(3);
+                                  setAiDetermineCount(false);
                                   setShowAutoSetupOption(true);
                                   setShowAiConfirmModal(true);
                                 }}
@@ -1193,6 +1201,13 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
                               </button>
                               <button
                                 onClick={() => {
+                                  // AI 확장 모달 상태 초기화
+                                  setAiExpandMode('simple');
+                                  setAiExpandCategory('mixed');
+                                  setAiExpandPrompt('');
+                                  setAiExpandScope('broad');
+                                  setAiExpandCount(3);
+                                  setAiDetermineCount(false);
                                   setShowAutoSetupOption(false);
                                   setShowAiConfirmModal(true);
                                 }}
@@ -1725,6 +1740,13 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
                 onClick={() => {
                   if (contextMenu.nodeId) {
                     setSelectedNodeId(contextMenu.nodeId);
+                    // AI 확장 모달 상태 초기화
+                    setAiExpandMode('simple');
+                    setAiExpandCategory('mixed');
+                    setAiExpandPrompt('');
+                    setAiExpandScope('broad');
+                    setAiExpandCount(3);
+                    setAiDetermineCount(false);
                     // 루트 노드인지 확인하여 자동 설정 옵션 활성화
                     const selectedNode = nodes.find(n => n.id === contextMenu.nodeId);
                     if (selectedNode?.data.type === 'root') {
