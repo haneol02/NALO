@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -198,7 +198,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
   const [historyIndex, setHistoryIndex] = useState(-1);
 
   // 초기 노드와 엣지
-  const initialNodes: Node[] = [
+  const initialNodes: Node[] = useMemo(() => [
     {
       id: '1',
       type: 'custom',
@@ -209,9 +209,9 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
         description: '메인 아이디어'
       },
     },
-  ];
+  ], [initialPrompt]);
 
-  const initialEdges: Edge[] = [];
+  const initialEdges: Edge[] = useMemo(() => [], []);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -422,7 +422,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
     setNewNodeText('');
     setNewNodeDescription('');
     setIsAddingNode(false);
-  }, [newNodeText, newNodeType, selectedNodeId, nodes, setNodes, setEdges, saveToHistory]);
+  }, [newNodeText, newNodeType, newNodeDescription, selectedNodeId, nodes, setNodes, setEdges, saveToHistory, findNonOverlappingPosition]);
 
   // 노드 편집 저장
   const saveNodeEdit = useCallback(() => {
@@ -584,7 +584,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
     } finally {
       setIsAiExpanding(false);
     }
-  }, [selectedNodeId, nodes, setNodes, setEdges, initialPrompt, isAiExpanding]);
+  }, [selectedNodeId, nodes, setNodes, setEdges, initialPrompt, isAiExpanding, aiExpandMode, aiExpandCategory, aiExpandPrompt, aiExpandScope, aiExpandCount, aiDetermineCount, showAutoSetupOption, saveToHistory, findNonOverlappingPosition, reactFlowInstance]);
 
   // 자동 설정 기능 (메인 노드 전용)
   const handleAutoSetup = useCallback(async () => {
@@ -729,7 +729,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
     } finally {
       setIsAutoSetupRunning(false);
     }
-  }, [nodes, setNodes, setEdges, initialPrompt, isAutoSetupRunning, saveToHistory]);
+  }, [nodes, setNodes, setEdges, initialPrompt, isAutoSetupRunning, saveToHistory, findNonOverlappingPosition]);
 
   // 드래그 이벤트 핸들러
   useEffect(() => {
@@ -838,13 +838,6 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
         }
         if (showAiConfirmModal) {
           setShowAiConfirmModal(false);
-          setAiExpandMode('simple');
-          setAiExpandCategory('mixed');
-          setAiExpandPrompt('');
-          setAiExpandScope('broad');
-          setAiExpandCount(3);
-          setAiDetermineCount(false);
-          setShowAutoSetupOption(false);
         }
         event.preventDefault();
       }
@@ -1376,14 +1369,23 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
             className="w-8 h-6 bg-white/90 rounded cursor-move flex items-center justify-center hover:bg-white transition-colors shadow-lg border border-gray-200"
             onMouseDown={(e) => {
               e.preventDefault();
-              setIsDragging(true);
               const panelRect = floatingPanelRef.current?.getBoundingClientRect();
               if (panelRect) {
+                // 처음 드래그 시작할 때 현재 위치가 중앙 정렬이면 절대 좌표로 변환
+                if (floatingPanelPosition.x === 0 && floatingPanelPosition.y === 0) {
+                  setFloatingPanelPosition({
+                    x: panelRect.left,
+                    y: panelRect.top
+                  });
+                  setFixedBottomPosition(window.innerHeight - panelRect.bottom);
+                }
+                
                 setDragOffset({
                   x: e.clientX - panelRect.left,
                   y: e.clientY - panelRect.top
                 });
               }
+              setIsDragging(true);
             }}
             title="드래그하여 이동"
           >
@@ -1604,11 +1606,6 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
               <button
                 onClick={() => {
                   setShowAiConfirmModal(false);
-                  setAiExpandMode('simple');
-                  setAiExpandCategory('mixed');
-                  setAiExpandPrompt('');
-                  setAiExpandScope('broad');
-                  setAiDetermineCount(false);
                 }}
                 className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 text-sm font-semibold"
               >
