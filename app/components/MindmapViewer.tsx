@@ -37,6 +37,7 @@ const CustomNode = ({ data, selected }: { data: MindmapNodeData; selected: boole
       case 'feature': return <Sparkles className="w-4 h-4" />;
       case 'problem': return <FileText className="w-4 h-4" />;
       case 'solution': return <Wrench className="w-4 h-4" />;
+      case 'detail': return <Settings className="w-4 h-4" />;
       default: return <Plus className="w-4 h-4" />;
     }
   };
@@ -48,6 +49,7 @@ const CustomNode = ({ data, selected }: { data: MindmapNodeData; selected: boole
       case 'feature': return 'bg-purple-100 text-purple-800 border-purple-300';
       case 'problem': return 'bg-red-100 text-red-800 border-red-300';
       case 'solution': return 'bg-green-100 text-green-800 border-green-300';
+      case 'detail': return 'bg-indigo-100 text-indigo-800 border-indigo-300';
       default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
@@ -57,8 +59,9 @@ const CustomNode = ({ data, selected }: { data: MindmapNodeData; selected: boole
       case 'root': return '메인';
       case 'idea': return '아이디어';
       case 'feature': return '기능';
-      case 'problem': return '문제';
+      case 'problem': return '문제점';
       case 'solution': return '해결책';
+      case 'detail': return '세부사항';
       default: return '기타';
     }
   };
@@ -975,7 +978,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
         {/* 패널 내용 */}
         <div 
           className={`px-4 transition-all duration-300 ease-in-out ${
-            isFloatingPanelCollapsed ? 'py-0 max-h-0 opacity-0 overflow-hidden' : 'py-3 max-h-96 opacity-100'
+            isFloatingPanelCollapsed ? 'py-0 max-h-0 opacity-0 overflow-hidden' : 'py-3 max-h-[500px] opacity-100'
           }`}
           style={{ 
             transformOrigin: 'bottom'
@@ -1028,6 +1031,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
                                 case 'feature': return <Sparkles className="w-3 h-3" />;
                                 case 'problem': return <FileText className="w-3 h-3" />;
                                 case 'solution': return <Wrench className="w-3 h-3" />;
+                                case 'detail': return <Settings className="w-3 h-3" />;
                                 default: return <Plus className="w-3 h-3" />;
                               }
                             };
@@ -1061,7 +1065,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
                           <option value="solution">해결책</option>
                           <option value="detail">세부사항</option>
                           {nodes.find(n => n.id === selectedNodeId)?.data.type === 'root' && (
-                            <option value="root">루트</option>
+                            <option value="root">메인</option>
                           )}
                         </select>
                       </div>
@@ -1079,6 +1083,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
                                   case 'feature': return <Sparkles className="w-4 h-4" />;
                                   case 'problem': return <FileText className="w-4 h-4" />;
                                   case 'solution': return <Wrench className="w-4 h-4" />;
+                                  case 'detail': return <Settings className="w-4 h-4" />;
                                   default: return <Plus className="w-4 h-4" />;
                                 }
                               };
