@@ -977,4 +977,269 @@ function generateFallbackTopics(
   };
 }
 
+// 마인드맵 기반 기획서 생성
+export async function generateMindmapPlan(mindmapData: { nodes: any[]; edges: any[] }, originalPrompt?: string) {
+  // 토큰 사용량 체크
+  checkAndResetDailyUsage();
+  const maxDailyTokens = 2000000;
+  
+  if (dailyTokenUsage >= maxDailyTokens) {
+    throw new Error('일일 토큰 사용량을 초과했습니다. 내일 다시 시도해주세요.');
+  }
+
+  // 마인드맵 구조 분석
+  const structuredData = analyzeMindmapStructure(mindmapData);
+  
+  const prompt = createMindmapPlanPrompt(structuredData, originalPrompt);
+
+  console.log('=== OpenAI API 호출 시작 (마인드맵 기반 기획서 생성) ===');
+  console.log('마인드맵 노드 수:', mindmapData.nodes.length);
+  console.log('마인드맵 엣지 수:', mindmapData.edges.length);
+  console.log('구조화된 데이터:', JSON.stringify(structuredData, null, 2));
+  console.log('=======================================');
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `당신은 마인드맵 기반 프로젝트 기획서 작성 전문가입니다.
+
+중요한 JSON 작성 규칙:
+1. 반드시 올바른 JSON 형식으로 응답하세요
+2. 문자열 값에 줄바꿈이 있을 경우 \\n 을 사용하세요
+3. 숫자 필드는 따옴표 없이 숫자로 작성하세요
+4. 배열 필드는 반드시 배열 형태 ["item1", "item2"] 로 작성하세요
+5. null 값이 필요한 경우 null 을 사용하세요 (따옴표 없음)
+6. 마인드맵의 구조와 내용을 최대한 반영하여 상세한 기획서를 작성하세요
+
+마인드맵 분석 방법:
+- 루트 노드: 프로젝트의 메인 주제
+- 1차 노드들: 주요 카테고리/영역
+- 2차+ 노드들: 세부 기능/요소
+- 노드 타입별 매핑:
+  * problem: 해결하고자 하는 문제
+  * solution: 제안하는 해결책
+  * feature: 구현할 기능
+  * detail: 세부 구현사항
+  * idea: 창의적 아이디어`
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 4000,
+      temperature: 0.7,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('OpenAI로부터 응답을 받지 못했습니다.');
+    }
+
+    const tokensUsed = response.usage?.total_tokens || 0;
+    dailyTokenUsage += tokensUsed;
+
+    console.log('OpenAI 응답 받음 (마인드맵 기반):', content.substring(0, 200) + '...');
+    console.log('토큰 사용량:', tokensUsed);
+
+    // JSON 파싱
+    let ideaPlan;
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonString = jsonMatch ? jsonMatch[0] : content;
+      ideaPlan = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error('JSON 파싱 오류 (마인드맵 기반):', parseError);
+      console.error('원본 응답:', content);
+      throw new Error('AI 응답을 파싱하는 중 오류가 발생했습니다.');
+    }
+
+    // 기획서 유효성 검증 (간단한 체크)
+    if (!ideaPlan || typeof ideaPlan !== 'object') {
+      throw new Error('생성된 기획서가 올바르지 않습니다.');
+    }
+
+    return {
+      ideaPlan,
+      keywords: extractKeywordsFromMindmap(mindmapData),
+      tokensUsed
+    };
+
+  } catch (error) {
+    console.error('마인드맵 기반 기획서 생성 오류:', error);
+    throw error;
+  }
+}
+
+// 마인드맵 구조 분석 함수
+function analyzeMindmapStructure(mindmapData: { nodes: any[]; edges: any[] }) {
+  const { nodes, edges } = mindmapData;
+  
+  // 루트 노드 찾기
+  const rootNode = nodes.find(node => node.data.type === 'root') || nodes[0];
+  
+  // 계층별 노드 그룹화
+  const nodesByLevel: { [level: number]: any[] } = {};
+  const visited = new Set();
+  
+  const buildLevels = (nodeId: string, level: number = 0) => {
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+    
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    
+    if (!nodesByLevel[level]) nodesByLevel[level] = [];
+    nodesByLevel[level].push(node);
+    
+    // 자식 노드들 찾기
+    const childEdges = edges.filter(edge => edge.source === nodeId);
+    childEdges.forEach(edge => {
+      buildLevels(edge.target, level + 1);
+    });
+  };
+  
+  buildLevels(rootNode.id);
+  
+  // 노드 타입별 분류
+  const nodesByType: { [type: string]: any[] } = {};
+  nodes.forEach(node => {
+    const type = node.data.type || 'idea';
+    if (!nodesByType[type]) nodesByType[type] = [];
+    nodesByType[type].push(node);
+  });
+  
+  return {
+    rootNode,
+    nodesByLevel,
+    nodesByType,
+    totalNodes: nodes.length,
+    totalEdges: edges.length,
+    maxDepth: Math.max(...Object.keys(nodesByLevel).map(Number))
+  };
+}
+
+// 마인드맵 기반 프롬프트 생성
+function createMindmapPlanPrompt(structuredData: any, originalPrompt?: string) {
+  const { rootNode, nodesByLevel, nodesByType } = structuredData;
+  
+  let prompt = `마인드맵을 기반으로 상세한 프로젝트 기획서를 작성해주세요.
+
+== 프로젝트 개요 ==
+프로젝트 주제: "${rootNode.data.label}"
+${rootNode.data.description ? `주제 설명: "${rootNode.data.description}"` : ''}
+${originalPrompt ? `원본 요청: "${originalPrompt}"` : ''}
+
+== 마인드맵 구조 분석 ==
+`;
+
+  // 계층별 노드 정보
+  Object.keys(nodesByLevel).forEach(level => {
+    const levelNum = parseInt(level);
+    const nodes = nodesByLevel[levelNum];
+    
+    prompt += `\n${levelNum === 0 ? '루트' : `${levelNum}차`} 레벨 (${nodes.length}개 노드):\n`;
+    nodes.forEach((node: any) => {
+      prompt += `- ${node.data.label} (${node.data.type})`;
+      if (node.data.description) {
+        prompt += `: ${node.data.description}`;
+      }
+      prompt += '\n';
+    });
+  });
+  
+  // 노드 타입별 분류
+  prompt += `\n== 노드 타입별 분류 ==\n`;
+  Object.keys(nodesByType).forEach(type => {
+    const nodes = nodesByType[type];
+    prompt += `\n${getTypeDescription(type)} (${nodes.length}개):\n`;
+    nodes.forEach((node: any) => {
+      prompt += `- ${node.data.label}`;
+      if (node.data.description) {
+        prompt += `: ${node.data.description}`;
+      }
+      prompt += '\n';
+    });
+  });
+
+  prompt += `\n이 마인드맵 정보를 바탕으로 다음 JSON 형식의 상세한 프로젝트 기획서를 작성해주세요:
+
+{
+  "project_name": "프로젝트명",
+  "service_summary": "서비스 요약 (1-2줄)",
+  "project_type": "웹서비스|모바일앱|시스템|플랫폼|기타",
+  "core_idea": "핵심 아이디어",
+  "background": "프로젝트 배경",
+  "target_customer": "타겟 고객",
+  "problem_to_solve": "해결하고자 하는 문제",
+  "proposed_solution": "제안하는 해결책",
+  "main_objectives": "주요 목표",
+  "success_metrics": "성공 지표",
+  "project_scope_include": "프로젝트 범위 (포함사항)",
+  "project_scope_exclude": "프로젝트 범위 (제외사항)",
+  "features": ["주요기능1", "주요기능2", "주요기능3"],
+  "key_features": ["핵심기능1", "핵심기능2"],
+  "project_phases": ["1단계: 설명", "2단계: 설명", "3단계: 설명"],
+  "difficulty": 5,
+  "market_potential": 7,
+  "competition": 6,
+  "challenges": ["도전과제1", "도전과제2"],
+  "success_factors": ["성공요인1", "성공요인2"],
+  "market_analysis": "시장 분석",
+  "competitors": "경쟁사 분석",
+  "differentiation": "차별화 전략",
+  "swot_strengths": "강점",
+  "swot_weaknesses": "약점",
+  "swot_opportunities": "기회",
+  "swot_threats": "위협",
+  "tech_stack": "기술 스택",
+  "system_architecture": "시스템 아키텍처",
+  "database_type": "데이터베이스",
+  "development_environment": "개발 환경",
+  "security_requirements": "보안 요구사항",
+  "expected_effects": "기대 효과",
+  "business_impact": "비즈니스 임팩트",
+  "social_value": "사회적 가치",
+  "roi_prediction": "ROI 예측",
+  "risk_factors": "위험 요소",
+  "risk_response": "위험 대응",
+  "contingency_plan": "비상 계획",
+  "development_cost": 1000000,
+  "operation_cost": 500000,
+  "marketing_cost": 300000,
+  "other_cost": 200000
+}`;
+
+  return prompt;
+}
+
+// 노드 타입 설명
+function getTypeDescription(type: string): string {
+  const descriptions = {
+    'root': '루트 노드',
+    'idea': '아이디어',
+    'feature': '기능',
+    'problem': '문제점',
+    'solution': '해결책',
+    'detail': '세부사항'
+  };
+  return descriptions[type as keyof typeof descriptions] || type;
+}
+
+// 마인드맵에서 키워드 추출
+function extractKeywordsFromMindmap(mindmapData: { nodes: any[]; edges: any[] }): string[] {
+  const keywords: string[] = [];
+  
+  mindmapData.nodes.forEach(node => {
+    if (node.data.label && node.data.label.length > 0) {
+      keywords.push(node.data.label);
+    }
+  });
+  
+  return Array.from(new Set(keywords)); // 중복 제거
+}
+
 export default openai;

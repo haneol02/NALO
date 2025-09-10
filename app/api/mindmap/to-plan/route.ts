@@ -1,0 +1,165 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { generateMindmapPlan } from '@/app/lib/openai';
+import { dbHelpers } from '@/app/lib/supabase';
+import { createClient } from '@/app/lib/supabase/server';
+
+export async function POST(request: NextRequest) {
+  try {
+    const { mindmapData, originalPrompt } = await request.json();
+    
+    if (!mindmapData || !mindmapData.nodes || !mindmapData.edges) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '마인드맵 데이터가 필요합니다.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 사용자 인증 확인
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    console.log(`=== 마인드맵 기반 기획서 생성 시작 ===`);
+    console.log('노드 수:', mindmapData.nodes.length);
+    console.log('엣지 수:', mindmapData.edges.length);
+    console.log('원본 프롬프트:', originalPrompt);
+    console.log('======================================');
+    
+    // 마인드맵 데이터를 기획서로 변환
+    const planResult = await generateMindmapPlan(mindmapData, originalPrompt);
+    
+    if (!planResult.ideaPlan) {
+      throw new Error('기획서 생성에 실패했습니다.');
+    }
+    
+    // 현재 날짜 생성 (YYYY.MM.DD 형식)
+    const currentDate = new Date().toLocaleDateString('ko-KR', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit' 
+    }).replace(/\//g, '.');
+
+    // 마인드맵 기반 아이디어 데이터 구성
+    const ideaData = {
+      title: planResult.ideaPlan.project_name || '마인드맵 기반 프로젝트',
+      summary: planResult.ideaPlan.service_summary || planResult.ideaPlan.core_idea || '',
+      description: planResult.ideaPlan.problem_to_solve || '',
+      coretech: planResult.ideaPlan.tech_stack || '',
+      target: planResult.ideaPlan.target_customer || '',
+      keywords: planResult.keywords || [],
+      mindmapStructure: mindmapData // 마인드맵 구조 정보 포함
+    };
+
+    // DB에 기획서 저장
+    const planData = {
+      // 기본 정보
+      project_name: planResult.ideaPlan.project_name || null,
+      service_summary: planResult.ideaPlan.service_summary || null,
+      created_date: currentDate,
+      project_type: planResult.ideaPlan.project_type || null,
+      core_idea: planResult.ideaPlan.core_idea || null,
+      background: planResult.ideaPlan.background || null,
+      target_customer: planResult.ideaPlan.target_customer || null,
+      problem_to_solve: planResult.ideaPlan.problem_to_solve || null,
+      proposed_solution: planResult.ideaPlan.proposed_solution || null,
+      
+      // 프로젝트 목표
+      main_objectives: planResult.ideaPlan.main_objectives || null,
+      success_metrics: planResult.ideaPlan.success_metrics || null,
+      
+      // 프로젝트 범위
+      project_scope_include: planResult.ideaPlan.project_scope_include || null,
+      project_scope_exclude: planResult.ideaPlan.project_scope_exclude || null,
+      
+      // 기능 및 단계
+      features: Array.isArray(planResult.ideaPlan.features) ? planResult.ideaPlan.features : null,
+      key_features: Array.isArray(planResult.ideaPlan.key_features) ? planResult.ideaPlan.key_features : null,
+      project_phases: Array.isArray(planResult.ideaPlan.project_phases) ? planResult.ideaPlan.project_phases : null,
+      
+      // 실현 가능성 분석
+      difficulty: planResult.ideaPlan.difficulty !== undefined ? Number(planResult.ideaPlan.difficulty) : null,
+      market_potential: planResult.ideaPlan.market_potential !== undefined ? Number(planResult.ideaPlan.market_potential) : null,
+      competition: planResult.ideaPlan.competition !== undefined ? Number(planResult.ideaPlan.competition) : null,
+      challenges: Array.isArray(planResult.ideaPlan.challenges) ? planResult.ideaPlan.challenges : null,
+      success_factors: Array.isArray(planResult.ideaPlan.success_factors) ? planResult.ideaPlan.success_factors : null,
+      
+      // 시장 분석
+      market_analysis: planResult.ideaPlan.market_analysis || null,
+      competitors: planResult.ideaPlan.competitors || null,
+      differentiation: planResult.ideaPlan.differentiation || null,
+      
+      // SWOT 분석
+      swot_strengths: planResult.ideaPlan.swot_strengths || null,
+      swot_weaknesses: planResult.ideaPlan.swot_weaknesses || null,
+      swot_opportunities: planResult.ideaPlan.swot_opportunities || null,
+      swot_threats: planResult.ideaPlan.swot_threats || null,
+      
+      // 기술적 요구사항
+      tech_stack: planResult.ideaPlan.tech_stack || null,
+      system_architecture: planResult.ideaPlan.system_architecture || null,
+      database_type: planResult.ideaPlan.database_type || null,
+      development_environment: planResult.ideaPlan.development_environment || null,
+      security_requirements: planResult.ideaPlan.security_requirements || null,
+      
+      // 기대효과 및 성과
+      expected_effects: planResult.ideaPlan.expected_effects || null,
+      business_impact: planResult.ideaPlan.business_impact || null,
+      social_value: planResult.ideaPlan.social_value || null,
+      roi_prediction: planResult.ideaPlan.roi_prediction || null,
+      
+      // 위험관리
+      risk_factors: planResult.ideaPlan.risk_factors || null,
+      risk_response: planResult.ideaPlan.risk_response || null,
+      contingency_plan: planResult.ideaPlan.contingency_plan || null,
+      
+      // 비용
+      development_cost: planResult.ideaPlan.development_cost !== undefined ? Number(planResult.ideaPlan.development_cost) : 0,
+      operation_cost: planResult.ideaPlan.operation_cost !== undefined ? Number(planResult.ideaPlan.operation_cost) : 0,
+      marketing_cost: planResult.ideaPlan.marketing_cost !== undefined ? Number(planResult.ideaPlan.marketing_cost) : 0,
+      other_cost: planResult.ideaPlan.other_cost !== undefined ? Number(planResult.ideaPlan.other_cost) : 0,
+      
+      // 연결 정보
+      idea_id: `mindmap_${Date.now()}`, // 마인드맵 기반임을 표시
+      input_keywords: planResult.keywords || null,
+      search_query: originalPrompt || null,
+      user_id: user?.id || null,
+      author_email: user?.email || null,
+      
+      // 마인드맵 메타데이터 (JSON으로 저장)
+      mindmap_structure: JSON.stringify({
+        nodes: mindmapData.nodes,
+        edges: mindmapData.edges,
+        nodeCount: mindmapData.nodes.length,
+        edgeCount: mindmapData.edges.length,
+        generatedAt: new Date().toISOString()
+      })
+    };
+    
+    const savedPlan = await dbHelpers.saveIdeaPlan(planData);
+    console.log(`[SUCCESS] 마인드맵 기반 기획서 저장 완료: ${savedPlan.id}`);
+    
+    return NextResponse.json({
+      success: true,
+      planId: savedPlan.id,
+      plan: planResult.ideaPlan,
+      ideaData: ideaData,
+      tokensUsed: planResult.tokensUsed
+    });
+
+  } catch (error) {
+    console.error('Mindmap to Plan API error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
+    return NextResponse.json(
+      {
+        success: false,
+        error: '마인드맵 기반 기획서 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
+      { status: 500 }
+    );
+  }
+}

@@ -252,53 +252,67 @@ export default function HomePage() {
   };
 
   const handleMindmapToPlan = async (mindmapData: { nodes: any[]; edges: any[] }) => {
-    console.log('=== 마인드맵에서 기획서 생성 시작 ===');
+    console.log('=== 마인드맵에서 기획서 생성 시작 (개선된 버전) ===');
     console.log('마인드맵 데이터:', mindmapData);
     
-    setCurrentStep('results');
     setIsGenerating(true);
     setError(null);
 
     try {
-      // 마인드맵 데이터를 텍스트로 변환
-      const mindmapText = convertMindmapToText(mindmapData);
-      
-      const response = await fetch('/api/generate', {
+      // 새로운 마인드맵 전용 API 호출
+      const response = await fetch('/api/mindmap/to-plan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          prompt: `${userPrompt}\n\n마인드맵 구조:\n${mindmapText}`
+          mindmapData: mindmapData,
+          originalPrompt: userPrompt
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('기획서 생성 API 에러:', errorData);
+        console.error('마인드맵 기획서 생성 API 에러:', errorData);
         const detailMessage = errorData.details ? ` (${errorData.details})` : '';
-        throw new Error((errorData.error || '기획서 생성에 실패했습니다.') + detailMessage);
+        throw new Error((errorData.error || '마인드맵 기획서 생성에 실패했습니다.') + detailMessage);
       }
 
       const data = await response.json();
-      console.log('=== 기획서 생성 결과 ===');
-      console.log('생성된 아이디어 수:', data.ideas?.length || 0);
+      console.log('=== 마인드맵 기획서 생성 결과 ===');
+      console.log('기획서 ID:', data.planId);
+      console.log('토큰 사용량:', data.tokensUsed);
       
-      const ideasWithIds = data.ideas?.map((idea: any, index: number) => ({
-        ...idea,
-        id: idea.id || `mindmap_idea_${Date.now()}_${index}`,
+      // 기획서가 생성되었으므로 plan 페이지로 직접 이동
+      if (data.planId) {
+        console.log(`기획서 생성 완료! /plan/${data.planId}로 이동합니다.`);
+        window.location.href = `/plan/${data.planId}`;
+        return;
+      }
+
+      // fallback: 아이디어 형태로 표시 (기존 방식)
+      const ideasWithIds = [{
+        id: `mindmap_plan_${Date.now()}`,
+        title: data.ideaData?.title || '마인드맵 기반 프로젝트',
+        summary: data.ideaData?.summary || data.plan?.service_summary || '',
+        description: data.ideaData?.description || data.plan?.problem_to_solve || '',
+        coretech: data.ideaData?.coretech || data.plan?.tech_stack || '',
+        target: data.ideaData?.target || data.plan?.target_customer || '',
         originalPrompt: userPrompt,
-        keywords: idea.keywords || data.keywords || [],
-        input_keywords: idea.keywords || data.keywords || [],
+        keywords: data.ideaData?.keywords || [],
+        input_keywords: data.ideaData?.keywords || [],
         search_query: userPrompt,
-        mindmapData: mindmapData
-      })) || [];
+        mindmapData: mindmapData,
+        planId: data.planId
+      }];
       
       setIdeas(ideasWithIds);
+      setCurrentStep('results');
     } catch (error) {
       console.error('마인드맵 기획서 생성 에러:', error);
-      setError(error instanceof Error ? error.message : '기획서 생성 중 오류가 발생했습니다.');
+      setError(error instanceof Error ? error.message : '마인드맵 기획서 생성 중 오류가 발생했습니다.');
       setIdeas([]);
+      setCurrentStep('results');
     } finally {
       setIsGenerating(false);
     }
