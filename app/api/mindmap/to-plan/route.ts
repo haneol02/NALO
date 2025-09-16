@@ -136,10 +136,16 @@ export async function POST(request: NextRequest) {
       social_value: planResult.ideaPlan.social_value || null,
       roi_prediction: planResult.ideaPlan.roi_prediction || null,
       
-      // 위험관리
-      risk_factors: planResult.ideaPlan.risk_factors || null,
-      risk_response: planResult.ideaPlan.risk_response || null,
-      contingency_plan: planResult.ideaPlan.contingency_plan || null,
+      // 위험관리 - 배열을 불릿 포인트 문자열로 변환
+      risk_factors: Array.isArray(planResult.ideaPlan.risk_factors) 
+        ? '• ' + planResult.ideaPlan.risk_factors.join('\n• ')
+        : planResult.ideaPlan.risk_factors || null,
+      risk_response: Array.isArray(planResult.ideaPlan.risk_response) 
+        ? '• ' + planResult.ideaPlan.risk_response.join('\n• ')
+        : planResult.ideaPlan.risk_response || null,
+      contingency_plan: Array.isArray(planResult.ideaPlan.contingency_plan) 
+        ? '• ' + planResult.ideaPlan.contingency_plan.join('\n• ')
+        : planResult.ideaPlan.contingency_plan || null,
       
       // 비용
       development_cost: planResult.ideaPlan.development_cost !== undefined ? Number(planResult.ideaPlan.development_cost) : 0,
