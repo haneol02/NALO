@@ -19,7 +19,7 @@ import ReactFlow, {
   Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Plus, Lightbulb, FileText, Sparkles, Target, Wrench, Settings, X, ChevronUp, ChevronDown, Edit3, Trash2, Eye, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Lightbulb, FileText, Sparkles, Target, Wrench, Settings, X, ChevronUp, ChevronDown, Edit3, Trash2, Eye, ArrowUp, ArrowDown, Save, Upload, Download } from 'lucide-react';
 
 // 노드 타입 정의
 interface MindmapNodeData {
@@ -537,6 +537,67 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
     }
   }, [history, historyIndex, setNodes, setEdges]);
 
+  // 마인드맵 저장
+  const saveMindmap = useCallback(() => {
+    const mindmapData = {
+      nodes,
+      edges,
+      timestamp: new Date().toISOString(),
+      title: nodes.find(n => n.data.type === 'root')?.data.label || '제목 없음'
+    };
+
+    const dataStr = JSON.stringify(mindmapData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `mindmap_${mindmapData.title}_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    // 메모리 정리
+    URL.revokeObjectURL(link.href);
+  }, [nodes, edges]);
+
+  // 마인드맵 불러오기
+  const loadMindmap = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target?.result as string);
+          
+          // 데이터 유효성 검사
+          if (data.nodes && data.edges && Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+            setNodes(data.nodes);
+            setEdges(data.edges);
+            
+            // 히스토리 초기화
+            setHistory([{ nodes: data.nodes, edges: data.edges }]);
+            setHistoryIndex(0);
+            
+            console.log('마인드맵이 성공적으로 로드되었습니다.');
+          } else {
+            console.error('잘못된 마인드맵 파일 형식입니다.');
+            alert('잘못된 마인드맵 파일 형식입니다.');
+          }
+        } catch (error) {
+          console.error('파일 읽기 오류:', error);
+          alert('파일을 읽는 중 오류가 발생했습니다.');
+        }
+      };
+      reader.readAsText(file);
+    };
+    
+    input.click();
+  }, [setNodes, setEdges]);
+
   // 새 노드 애니메이션 제거
   useEffect(() => {
     if (newNodeIds.size > 0) {
@@ -575,6 +636,31 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
       setHistoryIndex(0);
     }
   }, [history.length, initialNodes, initialEdges]);
+
+  // 로컬스토리지에서 마인드맵 데이터 로드
+  useEffect(() => {
+    const loadedData = localStorage.getItem('loadedMindmapData');
+    if (loadedData) {
+      try {
+        const data = JSON.parse(loadedData);
+        if (data.nodes && data.edges && Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+          setNodes(data.nodes);
+          setEdges(data.edges);
+          
+          // 히스토리 초기화
+          setHistory([{ nodes: data.nodes, edges: data.edges }]);
+          setHistoryIndex(0);
+          
+          console.log('로컬스토리지에서 마인드맵 데이터를 성공적으로 로드했습니다.');
+        }
+        // 사용한 데이터 제거
+        localStorage.removeItem('loadedMindmapData');
+      } catch (error) {
+        console.error('로컬스토리지 마인드맵 데이터 로드 오류:', error);
+        localStorage.removeItem('loadedMindmapData');
+      }
+    }
+  }, [setNodes, setEdges]);
 
   // 노드의 깊이를 계산하는 함수
   const getNodeDepth = useCallback((nodeId: string, visitedNodes = new Set<string>()): number => {
@@ -1814,8 +1900,8 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
                   onClick={() => setIsFloatingPanelOpen(true)}
                   className="px-3 py-2 bg-white/40 hover:bg-white/60 text-gray-800 rounded-lg border border-white/50 backdrop-blur-sm transition-all duration-500 text-xs font-semibold flex items-center justify-center hover:scale-105"
                 >
-                  <div className={`transition-transform duration-500 ease-in-out ${isFloatingPanelOpen ? 'rotate-45' : 'rotate-0'}`}>
-                    <Plus className="w-4 h-4" />
+                  <div className={`transition-transform duration-500 ease-in-out ${isFloatingPanelOpen ? 'rotate-180' : 'rotate-0'}`}>
+                    <Settings className="w-4 h-4" />
                   </div>
                 </button>
               </div>
@@ -2293,6 +2379,27 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
             attributionPosition="bottom-left"
           >
             <Controls position="top-left" />
+            
+            {/* 저장/불러오기 버튼 */}
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
+              <button
+                onClick={saveMindmap}
+                className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
+                title="마인드맵 저장"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">저장</span>
+              </button>
+              <button
+                onClick={loadMindmap}
+                className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors shadow-lg"
+                title="마인드맵 불러오기"
+              >
+                <Upload size={16} />
+                <span className="hidden sm:inline">불러오기</span>
+              </button>
+            </div>
+            
             <Background variant={BackgroundVariant.Dots} gap={12} size={1} color="#94a3b8" />
           </ReactFlow>
         </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FileText, GitBranch } from 'lucide-react';
+import { FileText, GitBranch, Upload } from 'lucide-react';
 
 interface IdeaGeneratorProps {
   onSearch: (prompt: string) => Promise<void>;
@@ -16,6 +16,43 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
   const [totalIdeas, setTotalIdeas] = useState<number>(0);
   const [isExtracting, setIsExtracting] = useState(false);
   const [generationMode, setGenerationMode] = useState<'topic' | 'direct' | 'mindmap'>('topic');
+
+  // 마인드맵 불러오기 함수
+  const handleLoadMindmap = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const data = JSON.parse(event.target?.result as string);
+          
+          // 데이터 유효성 검사
+          if (data.nodes && data.edges && Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+            // 불러온 마인드맵으로 브레인스토밍 모드 시작
+            if (onMindmapGeneration) {
+              // 로드된 데이터를 가지고 마인드맵 모드로 이동
+              localStorage.setItem('loadedMindmapData', JSON.stringify(data));
+              await onMindmapGeneration('불러온 마인드맵');
+            }
+          } else {
+            alert('잘못된 마인드맵 파일 형식입니다.');
+          }
+        } catch (error) {
+          console.error('파일 읽기 오류:', error);
+          alert('파일을 읽는 중 오류가 발생했습니다.');
+        }
+      };
+      reader.readAsText(file);
+    };
+    
+    input.click();
+  };
 
   useEffect(() => {
     fetchTotalIdeas();
@@ -151,10 +188,10 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
             <div className="flex flex-col gap-3 items-stretch max-w-sm mx-auto sm:max-w-none sm:flex-row sm:items-center sm:justify-center sm:gap-4">
               <button
                 type="submit"
-                disabled={isLoading || !inputText.trim()}
+                disabled={isLoading || (!inputText.trim() && generationMode !== 'mindmap')}
                 className={`
                   btn-primary btn-click text-sm sm:text-lg px-4 sm:px-8 py-3 sm:py-4 rounded-xl
-                  ${isLoading || !inputText.trim()
+                  ${isLoading || (!inputText.trim() && generationMode !== 'mindmap')
                     ? 'opacity-50 cursor-not-allowed' 
                     : 'hover:scale-105 hover:shadow-lg'
                   }
@@ -186,6 +223,24 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
                   </span>
                 )}
               </button>
+              
+              {/* 브레인스토밍 모드일 때만 불러오기 버튼 표시 */}
+              {generationMode === 'mindmap' && (
+                <button
+                  type="button"
+                  onClick={handleLoadMindmap}
+                  disabled={isLoading}
+                  className={`
+                    btn-secondary btn-click text-sm sm:text-lg px-4 sm:px-8 py-3 sm:py-4 rounded-xl
+                    ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-lg'}
+                    transition-all duration-200 flex items-center justify-center gap-2
+                  `}
+                >
+                  <Upload className="w-4 h-4" />
+                  <span className="hidden min-[375px]:inline">마인드맵 불러오기</span>
+                  <span className="min-[375px]:hidden">불러오기</span>
+                </button>
+              )}
               
               <a
                 href="/ideas"
