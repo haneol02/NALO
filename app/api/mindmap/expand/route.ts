@@ -5,6 +5,124 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// 텍스트에서 제안사항 추출하는 함수
+function extractSuggestionsFromText(text: string, selectedNode: any) {
+  const suggestions: any[] = [];
+  
+  try {
+    // 키워드 기반으로 제안사항 추출
+    const lines = text.split('\n');
+    let currentSuggestion: any = null;
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // 제목 패턴 찾기 ("label", "title", "제목" 등)
+      if (trimmedLine.includes('"label"') || trimmedLine.includes('title') || trimmedLine.includes('제목')) {
+        const titleMatch = trimmedLine.match(/["']([^"']+)["']/);
+        if (titleMatch) {
+          if (currentSuggestion) suggestions.push(currentSuggestion);
+          currentSuggestion = {
+            label: titleMatch[1],
+            type: 'feature',
+            description: '',
+            priority: 'medium',
+            complexity: 'moderate',
+            value: ''
+          };
+        }
+      }
+      
+      // 설명 패턴 찾기
+      if (currentSuggestion && (trimmedLine.includes('"description"') || trimmedLine.includes('설명'))) {
+        const descMatch = trimmedLine.match(/["']([^"']+)["']/);
+        if (descMatch) {
+          currentSuggestion.description = descMatch[1];
+        }
+      }
+      
+      // 타입 패턴 찾기
+      if (currentSuggestion && trimmedLine.includes('"type"')) {
+        const typeMatch = trimmedLine.match(/["'](feature|idea|problem|solution|detail)["']/);
+        if (typeMatch) {
+          currentSuggestion.type = typeMatch[1];
+        }
+      }
+    }
+    
+    if (currentSuggestion) suggestions.push(currentSuggestion);
+    
+    // 최소한의 제안사항이 없으면 기본 제안 생성
+    if (suggestions.length === 0) {
+      // 응답 텍스트에서 핵심 키워드 추출
+      const keywords = extractKeywords(text);
+      keywords.slice(0, 3).forEach((keyword, index) => {
+        suggestions.push({
+          label: `${keyword} 관련 기능`,
+          type: index === 0 ? 'feature' : index === 1 ? 'solution' : 'detail',
+          description: `${keyword}와 관련된 구체적인 구현 방안`,
+          priority: 'medium',
+          complexity: 'moderate',
+          value: `${keyword} 개선을 통한 가치 창출`
+        });
+      });
+    }
+    
+  } catch (error) {
+    console.error('텍스트 파싱 중 오류:', error);
+  }
+  
+  return suggestions.slice(0, 5); // 최대 5개로 제한
+}
+
+// 텍스트에서 키워드 추출
+function extractKeywords(text: string): string[] {
+  const keywords: string[] = [];
+  const commonWords = ['시스템', '기능', '서비스', '관리', '개발', '구현', '방안', '방법'];
+  
+  // 한글 키워드 추출 (2-10글자)
+  const koreanMatches = text.match(/[가-힣]{2,10}/g) || [];
+  const filteredKeywords = koreanMatches
+    .filter(word => word.length >= 2 && word.length <= 10)
+    .filter(word => !commonWords.includes(word))
+    .slice(0, 10);
+    
+  return Array.from(new Set(filteredKeywords)); // 중복 제거
+}
+
+// 노드별 기본 제안 반환
+function getDefaultSuggestions(selectedNode: any) {
+  const nodeType = selectedNode.data.type;
+  const fallbackSuggestions = {
+    'root': [
+      { label: '핵심 기능 정의', type: 'feature', description: '프로젝트의 주요 기능을 구체화', priority: 'high', complexity: 'moderate', value: '프로젝트 방향성 확립' },
+      { label: '사용자 요구사항', type: 'problem', description: '대상 사용자의 핵심 니즈 분석', priority: 'high', complexity: 'simple', value: '사용자 중심 설계' },
+      { label: '기술적 제약사항', type: 'problem', description: '구현 시 고려해야 할 기술적 한계', priority: 'medium', complexity: 'complex', value: '현실적 개발 계획' }
+    ],
+    'idea': [
+      { label: '구현 방안', type: 'solution', description: '아이디어를 실현하기 위한 구체적 방법', priority: 'high', complexity: 'moderate', value: '실행력 확보' },
+      { label: '필요한 기능', type: 'feature', description: '아이디어 실현을 위해 필요한 기능들', priority: 'medium', complexity: 'simple', value: '기능 명세화' }
+    ],
+    'feature': [
+      { label: '세부 스펙', type: 'detail', description: '기능의 상세한 명세와 동작 방식', priority: 'high', complexity: 'moderate', value: '명확한 요구사항' },
+      { label: '구현 이슈', type: 'problem', description: '기능 구현 시 예상되는 문제점', priority: 'medium', complexity: 'complex', value: '리스크 관리' }
+    ],
+    'problem': [
+      { label: '해결 방안', type: 'solution', description: '문제를 해결하기 위한 구체적 방법', priority: 'high', complexity: 'moderate', value: '문제 해결' },
+      { label: '대안 검토', type: 'solution', description: '다양한 접근 방식과 대안책', priority: 'medium', complexity: 'simple', value: '선택권 확보' }
+    ],
+    'solution': [
+      { label: '실행 계획', type: 'detail', description: '솔루션의 단계별 실행 방안', priority: 'high', complexity: 'moderate', value: '체계적 실행' },
+      { label: '효과 측정', type: 'detail', description: '솔루션 효과를 측정하는 방법', priority: 'medium', complexity: 'simple', value: '성과 검증' }
+    ],
+    'detail': [
+      { label: '구체화', type: 'detail', description: '더욱 상세한 내용과 명세', priority: 'medium', complexity: 'simple', value: '완성도 향상' }
+    ]
+  };
+  
+  return (fallbackSuggestions as any)[nodeType] || fallbackSuggestions['idea'];
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { selectedNode, context, expandOptions = {} } = await request.json();
@@ -226,11 +344,73 @@ ${mode === 'simple' ?
       throw new Error('OpenAI 응답이 비어있습니다.');
     }
 
-    // 지능적 JSON 파싱 및 품질 검증
+    // 강화된 JSON 파싱 및 품질 검증
     let suggestions;
     let analysis = null;
+    
+    const parseJsonResponse = (rawResponse: string) => {
+      let cleanedResponse = rawResponse.trim();
+      
+      // 1. 마크다운 코드블록 제거
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.substring(7);
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.substring(3);
+      }
+      
+      if (cleanedResponse.endsWith('```')) {
+        cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3);
+      }
+      
+      // 2. 앞뒤 공백 및 개행 정리
+      cleanedResponse = cleanedResponse.trim();
+      
+      // 3. AI가 설명 텍스트와 함께 JSON을 보낸 경우 처리
+      // "Here's the JSON:" 같은 텍스트 제거
+      const jsonStartPatterns = [
+        /^[\s\S]*?(?=\{)/,  // 첫 번째 {까지의 모든 텍스트 제거 (s 플래그 대신 [\s\S] 사용)
+        /^[^{]*(?=\{)/  // { 이전의 모든 비JSON 텍스트 제거
+      ];
+      
+      for (const pattern of jsonStartPatterns) {
+        if (pattern.test(cleanedResponse)) {
+          const match = cleanedResponse.match(pattern);
+          if (match && match[0].length > 0) {
+            // 설명 텍스트가 있다면 제거
+            cleanedResponse = cleanedResponse.substring(match[0].length);
+            break;
+          }
+        }
+      }
+      
+      // 4. JSON 끝 이후의 설명 텍스트 제거
+      const jsonEndPattern = /\}(?:\s*\n.*)?$/;
+      const lastBraceIndex = cleanedResponse.lastIndexOf('}');
+      if (lastBraceIndex !== -1) {
+        cleanedResponse = cleanedResponse.substring(0, lastBraceIndex + 1);
+      }
+      
+      // 5. 잘못된 문자 처리
+      cleanedResponse = cleanedResponse
+        .replace(/'/g, '"')  // 단일 따옴표를 쌍따옴표로 변경
+        .replace(/,(\s*[}\]])/g, '$1')  // 마지막 쉼표 제거
+        .replace(/([{,]\s*)(\w+):/g, '$1"$2":')  // 키에 따옴표 추가
+        .trim();
+      
+      // 6. 다중 JSON 객체가 있는 경우 첫 번째만 추출
+      if (cleanedResponse.includes('}\n{') || cleanedResponse.includes('} {')) {
+        const firstJsonEnd = cleanedResponse.indexOf('}') + 1;
+        cleanedResponse = cleanedResponse.substring(0, firstJsonEnd);
+      }
+      
+      return cleanedResponse;
+    };
+    
     try {
-      const parsed = JSON.parse(response);
+      const cleanedResponse = parseJsonResponse(response);
+      console.log('정제된 응답:', cleanedResponse);
+      
+      const parsed = JSON.parse(cleanedResponse);
       suggestions = parsed.suggestions || [];
       analysis = parsed.analysis || null;
       
@@ -248,45 +428,51 @@ ${mode === 'simple' ?
       console.error('JSON 파싱 오류:', parseError);
       console.log('원본 응답:', response);
       
-      // 파싱 실패시 노드별 맞춤형 기본 제안
-      const nodeType = selectedNode.data.type;
-      const fallbackSuggestions = {
-        'root': [
-          { label: '핵심 기능 정의', type: 'feature', description: '프로젝트의 주요 기능을 구체화', priority: 'high', complexity: 'moderate', value: '프로젝트 방향성 확립' },
-          { label: '사용자 요구사항', type: 'problem', description: '대상 사용자의 핵심 니즈 분석', priority: 'high', complexity: 'simple', value: '사용자 중심 설계' },
-          { label: '기술적 제약사항', type: 'problem', description: '구현 시 고려해야 할 기술적 한계', priority: 'medium', complexity: 'complex', value: '현실적 개발 계획' }
-        ],
-        'idea': [
-          { label: '구현 방안', type: 'solution', description: '아이디어를 실현하기 위한 구체적 방법', priority: 'high', complexity: 'moderate', value: '실행력 확보' },
-          { label: '필요한 기능', type: 'feature', description: '아이디어 실현을 위해 필요한 기능들', priority: 'medium', complexity: 'simple', value: '기능 명세화' }
-        ],
-        'feature': [
-          { label: '세부 스펙', type: 'detail', description: '기능의 상세한 명세와 동작 방식', priority: 'high', complexity: 'moderate', value: '명확한 요구사항' },
-          { label: '구현 이슈', type: 'problem', description: '기능 구현 시 예상되는 문제점', priority: 'medium', complexity: 'complex', value: '리스크 관리' }
-        ],
-        'problem': [
-          { label: '해결 방안', type: 'solution', description: '문제를 해결하기 위한 구체적 방법', priority: 'high', complexity: 'moderate', value: '문제 해결' },
-          { label: '대안 검토', type: 'solution', description: '다양한 접근 방식과 대안책', priority: 'medium', complexity: 'simple', value: '선택권 확보' }
-        ],
-        'solution': [
-          { label: '실행 계획', type: 'detail', description: '솔루션의 단계별 실행 방안', priority: 'high', complexity: 'moderate', value: '체계적 실행' },
-          { label: '효과 측정', type: 'detail', description: '솔루션 효과를 측정하는 방법', priority: 'medium', complexity: 'simple', value: '성과 검증' }
-        ],
-        'detail': [
-          { label: '구체화', type: 'detail', description: '더욱 상세한 내용과 명세', priority: 'medium', complexity: 'simple', value: '완성도 향상' }
-        ]
-      };
+      // 추가 파싱 시도: 더 관대한 방법들
+      try {
+        // 1. 정규식으로 JSON 부분만 추출 시도
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          console.log('정규식으로 JSON 추출 시도...');
+          const extractedJson = parseJsonResponse(jsonMatch[0]);
+          const parsed = JSON.parse(extractedJson);
+          suggestions = parsed.suggestions || [];
+          analysis = parsed.analysis || null;
+          console.log('정규식 추출 성공!');
+        } else {
+          throw new Error('JSON 구조를 찾을 수 없음');
+        }
+      } catch (secondParseError) {
+        console.error('두 번째 파싱 시도도 실패:', secondParseError);
+        
+        // 2. 텍스트에서 키워드 기반 정보 추출 시도
+        try {
+          console.log('텍스트 파싱 시도...');
+          const textParsedSuggestions = extractSuggestionsFromText(response, selectedNode);
+          if (textParsedSuggestions.length > 0) {
+            suggestions = textParsedSuggestions;
+            analysis = {
+              nodeContext: "AI 응답에서 텍스트 파싱으로 추출된 내용입니다.",
+              expansionDirection: "제한적 파싱으로 인한 기본 분석",
+              reasoning: "JSON 파싱 실패로 인한 대안 처리"
+            };
+            console.log('텍스트 파싱 성공!');
+          } else {
+            throw new Error('텍스트 파싱도 실패');
+          }
+        } catch (textParseError) {
+          console.error('텍스트 파싱도 실패:', textParseError);
+          // 최후의 수단: 노드별 기본 제안 사용
+          console.log('기본 제안 사용...');
+          suggestions = getDefaultSuggestions(selectedNode);
+        }
+      }
       
-      suggestions = (fallbackSuggestions as any)[nodeType] || fallbackSuggestions['idea'];
     }
 
     // 빈 배열이면 기본 제안 반환
     if (!suggestions || suggestions.length === 0) {
-      suggestions = [
-        { label: '세부 기능', type: 'feature', description: '구체적인 기능 정의' },
-        { label: '구현 방안', type: 'solution', description: '실현 가능한 방법' },
-        { label: '예상 이슈', type: 'problem', description: '고려해야 할 사항' }
-      ];
+      suggestions = getDefaultSuggestions(selectedNode);
     }
 
     console.log('=== 최종 제안 ===');
