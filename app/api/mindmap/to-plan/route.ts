@@ -80,12 +80,12 @@ export async function POST(request: NextRequest) {
       problem_to_solve: planResult.ideaPlan.problem_to_solve || null,
       proposed_solution: planResult.ideaPlan.proposed_solution || null,
       
-      // 프로젝트 목표 - 배열인 경우 적절히 처리
+      // 프로젝트 목표 - 배열인 경우 문자열로 변환하여 저장
       main_objectives: Array.isArray(planResult.ideaPlan.main_objectives) 
-        ? planResult.ideaPlan.main_objectives 
+        ? '• ' + planResult.ideaPlan.main_objectives.join('\n• ')
         : planResult.ideaPlan.main_objectives || null,
       success_metrics: Array.isArray(planResult.ideaPlan.success_metrics) 
-        ? planResult.ideaPlan.success_metrics 
+        ? '• ' + planResult.ideaPlan.success_metrics.join('\n• ')
         : planResult.ideaPlan.success_metrics || null,
       
       // 프로젝트 범위

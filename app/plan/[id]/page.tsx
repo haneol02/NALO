@@ -38,8 +38,8 @@ interface IdeaPlan {
   target_customer: string;
   problem_to_solve: string;
   proposed_solution: string;
-  main_objectives: string | string[];
-  success_metrics: string | string[];
+  main_objectives: string;
+  success_metrics: string;
   project_scope_include: string;
   project_scope_exclude: string;
   features: any[];
@@ -445,16 +445,10 @@ ${plan.proposed_solution || '데이터 없음'}
 ## 🎯 프로젝트 목표
 
 ### 주요 목표
-${Array.isArray(plan.main_objectives) ? 
-  plan.main_objectives.map((objective, index) => `${index + 1}. ${objective}`).join('\n') : 
-  (plan.main_objectives || '데이터 없음')
-}
+${plan.main_objectives || '데이터 없음'}
 
 ### 성공 지표
-${Array.isArray(plan.success_metrics) ? 
-  plan.success_metrics.map((metric, index) => `${index + 1}. ${metric}`).join('\n') : 
-  (plan.success_metrics || '데이터 없음')
-}
+${plan.success_metrics || '데이터 없음'}
 
 ## 📌 프로젝트 범위
 
@@ -960,36 +954,14 @@ ${plan.roi_prediction || '데이터 없음'}
             <div className="space-y-6">
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">주요 목표</h3>
-                <div className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  {Array.isArray(plan.main_objectives) ? (
-                    <ul className="space-y-2">
-                      {plan.main_objectives.map((objective: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <div className="w-1 h-1 bg-slate-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span className="selectable">{objective}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>{plan.main_objectives || '데이터 없음'}</p>
-                  )}
+                <div className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                  {plan.main_objectives || '데이터 없음'}
                 </div>
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">성공 지표</h3>
-                <div className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  {Array.isArray(plan.success_metrics) ? (
-                    <ul className="space-y-2">
-                      {plan.success_metrics.map((metric: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <div className="w-1 h-1 bg-slate-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span className="selectable">{metric}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>{plan.success_metrics || '데이터 없음'}</p>
-                  )}
+                <div className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                  {plan.success_metrics || '데이터 없음'}
                 </div>
               </div>
             </div>
