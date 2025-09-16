@@ -41,12 +41,17 @@ export async function POST(request: NextRequest) {
     console.log('project_type 값:', planResult.ideaPlan.project_type);
     console.log('=====================================');
     
-    // 현재 날짜 생성 (YYYY.MM.DD 형식)
-    const currentDate = new Date().toLocaleDateString('ko-KR', { 
+    // 현재 날짜 및 시간 생성 (YYYY.MM.DD HH:MM 형식)
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('ko-KR', { 
       year: 'numeric', 
       month: '2-digit', 
       day: '2-digit' 
-    }).replace(/\//g, '.');
+    }).replace(/\//g, '.') + ' ' + now.toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
 
     // 마인드맵 기반 아이디어 데이터 구성
     const ideaData = {
@@ -114,7 +119,9 @@ export async function POST(request: NextRequest) {
       
       // 시장 분석
       market_analysis: planResult.ideaPlan.market_analysis || null,
-      competitors: planResult.ideaPlan.competitors || null,
+      competitors: Array.isArray(planResult.ideaPlan.competitors) 
+        ? '• ' + planResult.ideaPlan.competitors.join('\n• ')
+        : planResult.ideaPlan.competitors || null,
       differentiation: planResult.ideaPlan.differentiation || null,
       
       // SWOT 분석

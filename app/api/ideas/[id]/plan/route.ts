@@ -34,12 +34,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       throw new Error('기획서 생성에 실패했습니다.');
     }
     
-    // 현재 날짜 생성 (YYYY.MM.DD 형식)
-    const currentDate = new Date().toLocaleDateString('ko-KR', { 
+    // 현재 날짜 및 시간 생성 (YYYY.MM.DD HH:MM 형식)
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('ko-KR', { 
       year: 'numeric', 
       month: '2-digit', 
       day: '2-digit' 
-    }).replace(/\//g, '.');
+    }).replace(/\//g, '.') + ' ' + now.toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
 
     // DB에 기획서 저장 - 모든 필드 포함, 더미 데이터 대신 빈 값 처리
     const planData = {
@@ -88,7 +93,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       
       // 시장 분석
       market_analysis: planResult.ideaPlan.market_analysis || null,
-      competitors: planResult.ideaPlan.competitors || null,
+      competitors: Array.isArray(planResult.ideaPlan.competitors) 
+        ? '• ' + planResult.ideaPlan.competitors.join('\n• ')
+        : planResult.ideaPlan.competitors || null,
       differentiation: planResult.ideaPlan.differentiation || null,
       
       // SWOT 분석

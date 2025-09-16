@@ -891,7 +891,7 @@ function processArrayFields(ideaPlan: any): any {
   const processedPlan = { ...ideaPlan };
   
   // 배열로 처리해야 하는 필드들
-  const arrayFields = ['main_objectives', 'success_metrics'];
+  const arrayFields = ['main_objectives', 'success_metrics', 'risk_factors', 'risk_response', 'contingency_plan', 'features', 'key_features', 'challenges', 'success_factors', 'competitors'];
   
   arrayFields.forEach(field => {
     if (processedPlan[field]) {

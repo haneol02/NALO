@@ -157,7 +157,21 @@ export default function BusinessPlanPage() {
   }, [shareMenuOpen, downloadMenuOpen, moreMenuOpen]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR');
+    // 이미 "YYYY.MM.DD HH:MM" 형식인 경우 그대로 반환
+    if (dateString.includes(' ') && dateString.includes(':')) {
+      return dateString;
+    }
+    // Date 객체로 파싱 가능한 경우 날짜와 시간 모두 표시
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleDateString('ko-KR') + ' ' + date.toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    }
+    // 파싱 불가능한 경우 원본 그대로 반환
+    return dateString;
   };
 
   const formatCost = (cost: number) => {
