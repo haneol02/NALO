@@ -46,6 +46,7 @@ const CustomNode = ({
   const [editDescription, setEditDescription] = React.useState(data.description || '');
   const [editType, setEditType] = React.useState(data.type);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const descriptionRef = React.useRef<HTMLTextAreaElement>(null);
   
   // 편집 모드 진입 시 포커스 및 data.isEditing 변경 감지
   React.useEffect(() => {
@@ -53,6 +54,17 @@ const CustomNode = ({
       setIsEditing(data.isEditing);
     }
   }, [data.isEditing]);
+
+  // 설명 textarea 자동 크기 조절
+  const adjustTextareaHeight = React.useCallback(() => {
+    if (descriptionRef.current) {
+      // 먼저 높이를 초기화
+      descriptionRef.current.style.height = 'auto';
+      // 컨텐츠에 맞게 높이 설정 (최대 100px)
+      const newHeight = Math.min(descriptionRef.current.scrollHeight, 100);
+      descriptionRef.current.style.height = newHeight + 'px';
+    }
+  }, []);
   
   React.useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -61,7 +73,30 @@ const CustomNode = ({
         inputRef.current.select();
       }
     }
-  }, [isEditing, data.isEmpty]);
+    // 편집 모드 시작할 때 textarea 높이도 조절
+    if (isEditing) {
+      setTimeout(() => {
+        adjustTextareaHeight();
+      }, 10); // DOM 업데이트 후 실행
+    }
+  }, [isEditing, data.isEmpty, adjustTextareaHeight]);
+
+  // 편집 상태나 설명 내용이 바뀔 때마다 높이 조절
+  React.useEffect(() => {
+    if (isEditing) {
+      adjustTextareaHeight();
+    }
+  }, [isEditing, editDescription, adjustTextareaHeight]);
+
+  // textarea가 렌더링된 후 높이 조절 (편집 시작 시)
+  React.useEffect(() => {
+    if (isEditing && descriptionRef.current) {
+      // requestAnimationFrame을 사용해서 DOM이 완전히 업데이트된 후 실행
+      requestAnimationFrame(() => {
+        adjustTextareaHeight();
+      });
+    }
+  }, [isEditing, adjustTextareaHeight]);
 
   // 노드 업데이트 함수 (부모 컴포넌트에서 전달받아야 함)
   const updateNode = React.useCallback((updates: Partial<MindmapNodeData>) => {
@@ -124,6 +159,17 @@ const CustomNode = ({
       e.preventDefault();
       cancelEdit();
     }
+  };
+
+  const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+    }
+    // Shift+Enter는 기본 동작(줄넘김) 허용
   };
   const getNodeIcon = () => {
     switch (data.type) {
@@ -220,11 +266,14 @@ const CustomNode = ({
           </div>
 
           {/* 설명 입력 */}
-          <input
-            type="text"
+          <textarea
+            ref={descriptionRef}
             value={editDescription}
-            onChange={(e) => setEditDescription(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onChange={(e) => {
+              setEditDescription(e.target.value);
+              adjustTextareaHeight();
+            }}
+            onKeyDown={handleDescriptionKeyDown}
             onMouseDown={(e) => {
               e.stopPropagation();
             }}
@@ -235,7 +284,9 @@ const CustomNode = ({
             }}
             onDragStart={(e) => e.preventDefault()}
             placeholder="설명 (선택사항)"
-            className="w-full px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+            className="w-full px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 resize-none overflow-hidden"
+            rows={1}
+            style={{ minHeight: '28px', maxHeight: '100px' }}
           />
 
           {/* 카테고리 선택 */}

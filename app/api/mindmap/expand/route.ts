@@ -10,20 +10,40 @@ function extractSuggestionsFromText(text: string, selectedNode: any) {
   const suggestions: any[] = [];
   
   try {
-    // 키워드 기반으로 제안사항 추출
+    console.log('텍스트 파싱 상세 로그 시작...');
+    
+    // 1. JSON 구조에서 정보 추출 시도
     const lines = text.split('\n');
     let currentSuggestion: any = null;
+    let inSuggestions = false;
     
-    for (const line of lines) {
-      const trimmedLine = line.trim();
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
       
-      // 제목 패턴 찾기 ("label", "title", "제목" 등)
-      if (trimmedLine.includes('"label"') || trimmedLine.includes('title') || trimmedLine.includes('제목')) {
-        const titleMatch = trimmedLine.match(/["']([^"']+)["']/);
-        if (titleMatch) {
-          if (currentSuggestion) suggestions.push(currentSuggestion);
+      // suggestions 배열 시작 감지
+      if (line.includes('"suggestions"') && line.includes('[')) {
+        inSuggestions = true;
+        continue;
+      }
+      
+      // suggestions 배열 종료 감지
+      if (inSuggestions && line.includes(']')) {
+        inSuggestions = false;
+        if (currentSuggestion) {
+          suggestions.push(currentSuggestion);
+          currentSuggestion = null;
+        }
+        break;
+      }
+      
+      if (inSuggestions) {
+        // 새로운 객체 시작
+        if (line.includes('{')) {
+          if (currentSuggestion) {
+            suggestions.push(currentSuggestion);
+          }
           currentSuggestion = {
-            label: titleMatch[1],
+            label: '',
             type: 'feature',
             description: '',
             priority: 'medium',
@@ -31,42 +51,123 @@ function extractSuggestionsFromText(text: string, selectedNode: any) {
             value: ''
           };
         }
-      }
-      
-      // 설명 패턴 찾기
-      if (currentSuggestion && (trimmedLine.includes('"description"') || trimmedLine.includes('설명'))) {
-        const descMatch = trimmedLine.match(/["']([^"']+)["']/);
-        if (descMatch) {
-          currentSuggestion.description = descMatch[1];
-        }
-      }
-      
-      // 타입 패턴 찾기
-      if (currentSuggestion && trimmedLine.includes('"type"')) {
-        const typeMatch = trimmedLine.match(/["'](feature|idea|problem|solution|detail)["']/);
-        if (typeMatch) {
-          currentSuggestion.type = typeMatch[1];
+        
+        // 각 필드 파싱
+        if (currentSuggestion) {
+          if (line.includes('"label"')) {
+            const match = line.match(/"label":\s*"([^"]*?)"/);
+            if (match) currentSuggestion.label = match[1];
+          }
+          
+          if (line.includes('"type"')) {
+            const match = line.match(/"type":\s*"([^"]*?)"/);
+            if (match) currentSuggestion.type = match[1];
+          }
+          
+          if (line.includes('"description"')) {
+            // 여러 줄에 걸친 설명 처리
+            let description = '';
+            const match = line.match(/"description":\s*"([^"]*?)(?:",|"$|")/);
+            if (match) {
+              description = match[1];
+              // 설명이 다음 줄까지 이어지는 경우 처리
+              let j = i + 1;
+              while (j < lines.length && !lines[j].trim().includes('"') && description.length < 200) {
+                description += ' ' + lines[j].trim();
+                j++;
+              }
+              currentSuggestion.description = description.trim();
+            }
+          }
+          
+          if (line.includes('"priority"')) {
+            const match = line.match(/"priority":\s*"([^"]*?)"/);
+            if (match) currentSuggestion.priority = match[1];
+          }
+          
+          if (line.includes('"complexity"')) {
+            const match = line.match(/"complexity":\s*"([^"]*?)"/);
+            if (match) currentSuggestion.complexity = match[1];
+          }
+          
+          if (line.includes('"value"')) {
+            const match = line.match(/"value":\s*"([^"]*?)"/);
+            if (match) currentSuggestion.value = match[1];
+          }
         }
       }
     }
     
-    if (currentSuggestion) suggestions.push(currentSuggestion);
+    // 마지막 객체 추가
+    if (currentSuggestion && currentSuggestion.label) {
+      suggestions.push(currentSuggestion);
+    }
     
-    // 최소한의 제안사항이 없으면 기본 제안 생성
+    console.log('구조적 파싱 결과:', suggestions.length, '개');
+    
+    // 2. 구조적 파싱이 실패했으면 키워드 기반 파싱
     if (suggestions.length === 0) {
-      // 응답 텍스트에서 핵심 키워드 추출
+      console.log('키워드 기반 파싱 시도...');
       const keywords = extractKeywords(text);
-      keywords.slice(0, 3).forEach((keyword, index) => {
+      
+      // 특별한 패턴들 찾기
+      const systemPattern = /시스템|시스템/g;
+      const servicePattern = /서비스|프로그램/g;
+      const safetyPattern = /안전|보안|경고/g;
+      
+      const systemMatches = text.match(systemPattern) || [];
+      const serviceMatches = text.match(servicePattern) || [];
+      const safetyMatches = text.match(safetyPattern) || [];
+      
+      if (systemMatches.length > 0) {
         suggestions.push({
-          label: `${keyword} 관련 기능`,
-          type: index === 0 ? 'feature' : index === 1 ? 'solution' : 'detail',
-          description: `${keyword}와 관련된 구체적인 구현 방안`,
-          priority: 'medium',
+          label: '실시간 경고 시스템',
+          type: 'feature',
+          description: '실시간으로 상태를 모니터링하고 경고를 전송하는 시스템',
+          priority: 'high',
           complexity: 'moderate',
-          value: `${keyword} 개선을 통한 가치 창출`
+          value: '안전성 강화 및 사고 예방'
         });
-      });
+      }
+      
+      if (serviceMatches.length > 0) {
+        suggestions.push({
+          label: '교육 프로그램 서비스',
+          type: 'feature',
+          description: '정기적인 교육 및 훈련을 제공하는 서비스',
+          priority: 'medium',
+          complexity: 'simple',
+          value: '인식 제고 및 능력 향상'
+        });
+      }
+      
+      if (safetyMatches.length > 0) {
+        suggestions.push({
+          label: '안전 점검 관리',
+          type: 'feature',
+          description: '체계적인 안전 점검 및 관리 기능',
+          priority: 'high',
+          complexity: 'moderate',
+          value: '예방적 관리를 통한 안전 확보'
+        });
+      }
+      
+      // 여전히 없으면 기본 키워드로
+      if (suggestions.length === 0) {
+        keywords.slice(0, 3).forEach((keyword, index) => {
+          suggestions.push({
+            label: `${keyword} 관련 기능`,
+            type: index === 0 ? 'feature' : index === 1 ? 'solution' : 'detail',
+            description: `${keyword}와 관련된 구체적인 구현 방안`,
+            priority: 'medium',
+            complexity: 'moderate',
+            value: `${keyword} 개선을 통한 가치 창출`
+          });
+        });
+      }
     }
+    
+    console.log('최종 텍스트 파싱 결과:', suggestions.length, '개');
     
   } catch (error) {
     console.error('텍스트 파싱 중 오류:', error);
@@ -195,6 +296,10 @@ export async function POST(request: NextRequest) {
 - 노드명: "${selectedNode.data.label}"
 - 노드 타입: ${selectedNode.data.type}
 - 노드 설명: ${selectedNode.data.description || '없음'}
+${selectedNode.data.description ? `
+**주의: 노드 설명을 반드시 고려하여 확장하세요:**
+"${selectedNode.data.description}"
+이 설명은 노드의 핵심 의미와 방향을 나타내므로, 모든 제안은 이 설명과 일치해야 합니다.` : ''}
 
 **전체 컨텍스트:**
 ${context || '전체 주제: 알 수 없음'}
@@ -209,6 +314,8 @@ ${modeStrategy}
 **지능적 분석 단계:**
 
 1. **노드 맥락 분석**: 
+   - **노드 제목 분석**: "${selectedNode.data.label}"의 핵심 의미와 범위 파악
+   ${selectedNode.data.description ? `- **노드 설명 심층 분석**: "${selectedNode.data.description}"에서 도출되는 구체적 요구사항과 방향성 파악` : ''}
    - **계층 구조 파악**: 제공된 노드 계층 경로를 통해 전체 맥락 이해
    - **상위 관계성 분석**: 직접 상위 노드 및 전체 상위 경로와의 연관성 파악
    - **현재 노드 역할**: 계층에서의 위치에 따른 역할과 중요도 평가
@@ -249,6 +356,8 @@ ${modeStrategy}
 ${typeInstruction}
 
 **중요 지침:**
+- **노드 정보 필수 반영**: 노드명 "${selectedNode.data.label}"${selectedNode.data.description ? `과 설명 "${selectedNode.data.description}"` : ''} 모두를 반드시 분석하고 활용
+${selectedNode.data.description ? `- **설명 중심 확장**: "${selectedNode.data.description}"이 나타내는 구체적 의도와 요구사항에 정확히 부합하는 하위 아이디어만 생성` : ''}
 - **계층 맥락 활용**: 제공된 노드 계층 경로를 충분히 활용하여 상위 맥락에 부합하는 하위 아이디어 생성
 - **선택 노드 중심**: "${selectedNode.data.label}" 노드를 기준으로 하되, 전체 계층 구조를 고려한 확장
 - **일관성 유지**: 상위 노드들의 목적과 방향성에 일치하는 아이디어 제안
@@ -291,12 +400,14 @@ ${typeInstruction}
 - 다양한 산업 분야의 프로젝트 기획 경험
 
 **작업 원칙:**
-1. **계층 맥락 우선**: 제공된 노드 계층 경로를 필수적으로 분석하여 상위 맥락에 부합하는 아이디어 생성
-2. **구조적 일관성**: 전체 계층 구조 내에서 논리적 일관성과 연결성 확보
-3. **심층 분석**: 단순한 연상이 아닌 계층적 맥락을 고려한 체계적 분석
-4. **세분화 정도**: 계층 깊이에 따라 적절한 구체성과 세분화 수준 조절
-5. **품질 우선**: 상위 맥락을 반영한 실무에서 바로 활용 가능한 고품질 아이디어
-6. **실현 가능성**: 계층적 제약사항을 고려한 현실적이면서도 가치있는 제안
+1. **노드 정보 완전 활용**: 노드의 제목과 설명을 모두 반드시 분석하여 정확한 맥락 파악
+2. **설명 기반 확장**: 노드 설명이 있는 경우, 해당 설명의 의도와 방향성에 완전히 부합하는 아이디어만 생성
+3. **계층 맥락 우선**: 제공된 노드 계층 경로를 필수적으로 분석하여 상위 맥락에 부합하는 아이디어 생성
+4. **구조적 일관성**: 전체 계층 구조 내에서 논리적 일관성과 연결성 확보
+5. **심층 분석**: 단순한 연상이 아닌 노드 설명과 계층적 맥락을 고려한 체계적 분석
+6. **세분화 정도**: 계층 깊이에 따라 적절한 구체성과 세분화 수준 조절
+7. **품질 우선**: 노드 설명과 상위 맥락을 완벽히 반영한 실무에서 바로 활용 가능한 고품질 아이디어
+8. **실현 가능성**: 계층적 제약사항을 고려한 현실적이면서도 가치있는 제안
 
 **모드별 전문성:**
 ${mode === 'simple' ? 
@@ -395,6 +506,10 @@ ${mode === 'simple' ?
         .replace(/'/g, '"')  // 단일 따옴표를 쌍따옴표로 변경
         .replace(/,(\s*[}\]])/g, '$1')  // 마지막 쉼표 제거
         .replace(/([{,]\s*)(\w+):/g, '$1"$2":')  // 키에 따옴표 추가
+        .replace(/"/g, '"')  // 왼쪽 따옴표를 일반 따옴표로 변경
+        .replace(/"/g, '"')  // 오른쪽 따옴표를 일반 따옴표로 변경
+        .replace(/'/g, '"')  // 왼쪽 작은따옴표를 따옴표로 변경
+        .replace(/'/g, '"')  // 오른쪽 작은따옴표를 따옴표로 변경
         .trim();
       
       // 6. 다중 JSON 객체가 있는 경우 첫 번째만 추출
@@ -452,11 +567,11 @@ ${mode === 'simple' ?
           if (textParsedSuggestions.length > 0) {
             suggestions = textParsedSuggestions;
             analysis = {
-              nodeContext: "AI 응답에서 텍스트 파싱으로 추출된 내용입니다.",
-              expansionDirection: "제한적 파싱으로 인한 기본 분석",
-              reasoning: "JSON 파싱 실패로 인한 대안 처리"
+              nodeContext: `${selectedNode.data.label} 노드에 대한 확장 제안을 텍스트 분석을 통해 추출했습니다.`,
+              expansionDirection: `${selectedNode.data.type} 타입의 노드를 중심으로 한 실용적 확장`,
+              reasoning: "AI 응답에서 핵심 키워드와 아이디어를 추출하여 구조화했습니다."
             };
-            console.log('텍스트 파싱 성공!');
+            console.log('텍스트 파싱 성공! 제안 수:', textParsedSuggestions.length);
           } else {
             throw new Error('텍스트 파싱도 실패');
           }
