@@ -41,16 +41,18 @@ export async function POST(request: NextRequest) {
     console.log('project_type 값:', planResult.ideaPlan.project_type);
     console.log('=====================================');
     
-    // 현재 날짜 및 시간 생성 (YYYY.MM.DD HH:MM 형식)
+    // 현재 날짜 및 시간 생성 (서울 시간대, YYYY.MM.DD HH:MM 형식)
     const now = new Date();
     const currentDate = now.toLocaleDateString('ko-KR', { 
       year: 'numeric', 
       month: '2-digit', 
-      day: '2-digit' 
+      day: '2-digit',
+      timeZone: 'Asia/Seoul'
     }).replace(/\//g, '.') + ' ' + now.toLocaleTimeString('ko-KR', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false
+      hour12: false,
+      timeZone: 'Asia/Seoul'
     });
 
     // 마인드맵 기반 아이디어 데이터 구성
