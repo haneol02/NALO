@@ -69,7 +69,7 @@ export const dbHelpers = {
     target_customer: string;
     problem_to_solve: string;
     proposed_solution: string;
-    features: string[]; // JSON 배열을 문자열 배열로
+    features: string;
     development_cost: number;
     operation_cost: number;
     marketing_cost: number;
@@ -85,6 +85,12 @@ export const dbHelpers = {
     success_metrics?: string;
     project_scope_include?: string;
     project_scope_exclude?: string;
+    key_features?: string;
+    challenges?: string;
+    success_factors?: string;
+    difficulty?: number | null;
+    market_potential?: number | null;
+    competition?: number | null;
     market_analysis?: string;
     competitors?: string;
     differentiation?: string;
@@ -129,6 +135,12 @@ export const dbHelpers = {
       success_metrics: plan.success_metrics || null,
       project_scope_include: plan.project_scope_include || null,
       project_scope_exclude: plan.project_scope_exclude || null,
+      key_features: plan.key_features || null,
+      challenges: plan.challenges || null,
+      success_factors: plan.success_factors || null,
+      difficulty: plan.difficulty || null,
+      market_potential: plan.market_potential || null,
+      competition: plan.competition || null,
       market_analysis: plan.market_analysis || null,
       competitors: plan.competitors || null,
       differentiation: plan.differentiation || null,

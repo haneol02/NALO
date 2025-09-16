@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       problem_to_solve: planResult.ideaPlan.problem_to_solve || null,
       proposed_solution: planResult.ideaPlan.proposed_solution || null,
       
-      // 프로젝트 목표 - 배열인 경우 문자열로 변환하여 저장
+      // 프로젝트 목표 - 배열을 불릿 포인트 문자열로 변환
       main_objectives: Array.isArray(planResult.ideaPlan.main_objectives) 
         ? '• ' + planResult.ideaPlan.main_objectives.join('\n• ')
         : planResult.ideaPlan.main_objectives || null,
@@ -92,17 +92,25 @@ export async function POST(request: NextRequest) {
       project_scope_include: planResult.ideaPlan.project_scope_include || null,
       project_scope_exclude: planResult.ideaPlan.project_scope_exclude || null,
       
-      // 기능 및 단계
-      features: Array.isArray(planResult.ideaPlan.features) ? planResult.ideaPlan.features : null,
-      key_features: Array.isArray(planResult.ideaPlan.key_features) ? planResult.ideaPlan.key_features : null,
+      // 기능 및 단계 - 배열을 불릿 포인트 문자열로 변환
+      features: Array.isArray(planResult.ideaPlan.features) 
+        ? '• ' + planResult.ideaPlan.features.join('\n• ')
+        : planResult.ideaPlan.features || null,
+      key_features: Array.isArray(planResult.ideaPlan.key_features) 
+        ? '• ' + planResult.ideaPlan.key_features.join('\n• ')
+        : planResult.ideaPlan.key_features || null,
       project_phases: Array.isArray(planResult.ideaPlan.project_phases) ? planResult.ideaPlan.project_phases : null,
       
       // 실현 가능성 분석
       difficulty: planResult.ideaPlan.difficulty !== undefined ? Number(planResult.ideaPlan.difficulty) : null,
       market_potential: planResult.ideaPlan.market_potential !== undefined ? Number(planResult.ideaPlan.market_potential) : null,
       competition: planResult.ideaPlan.competition !== undefined ? Number(planResult.ideaPlan.competition) : null,
-      challenges: Array.isArray(planResult.ideaPlan.challenges) ? planResult.ideaPlan.challenges : null,
-      success_factors: Array.isArray(planResult.ideaPlan.success_factors) ? planResult.ideaPlan.success_factors : null,
+      challenges: Array.isArray(planResult.ideaPlan.challenges) 
+        ? '• ' + planResult.ideaPlan.challenges.join('\n• ')
+        : planResult.ideaPlan.challenges || null,
+      success_factors: Array.isArray(planResult.ideaPlan.success_factors) 
+        ? '• ' + planResult.ideaPlan.success_factors.join('\n• ')
+        : planResult.ideaPlan.success_factors || null,
       
       // 시장 분석
       market_analysis: planResult.ideaPlan.market_analysis || null,

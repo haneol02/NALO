@@ -42,13 +42,13 @@ interface IdeaPlan {
   success_metrics: string;
   project_scope_include: string;
   project_scope_exclude: string;
-  features: any[];
-  key_features?: string[];
+  features: string;
+  key_features?: string;
   difficulty?: number;
   market_potential?: number;
   competition?: number;
-  challenges?: string[];
-  success_factors?: string[];
+  challenges?: string;
+  success_factors?: string;
   market_analysis: string;
   competitors: string;
   differentiation: string;
@@ -460,16 +460,11 @@ ${plan.project_scope_exclude || '데이터 없음'}
 
 ## ✨ 주요 기능
 
-${plan.features && plan.features.length > 0 ? 
-  plan.features.map((feature, index) => 
-    `${index + 1}. ${typeof feature === 'string' ? feature : (feature.detail_feature || feature.feature_id || '기능')}`
-  ).join('\n') : 
-  '기능 명세 정보가 없습니다.'
-}
+${plan.features || '기능 명세 정보가 없습니다.'}
 
-${plan.key_features && plan.key_features.length > 0 ? `
+${plan.key_features ? `
 ### 핵심 기능
-${plan.key_features.map((feature, index) => `${index + 1}. ${feature}`).join('\n')}
+${plan.key_features}
 ` : ''}
 
 ## 📊 실현 가능성 분석
@@ -478,14 +473,14 @@ ${plan.difficulty ? `**기술 난이도**: ${getDifficultyText(plan.difficulty)}
 ${plan.market_potential ? `**시장 잠재력**: ${getMarketPotentialText(plan.market_potential)} (${plan.market_potential}/5)\n` : ''}
 ${plan.competition ? `**경쟁 우위도**: ${getCompetitionText(plan.competition)} (${5 - plan.competition}/5)\n` : ''}
 
-${plan.challenges && plan.challenges.length > 0 ? `
+${plan.challenges ? `
 ### ⚠️ 예상 도전과제
-${plan.challenges.map(challenge => `- ${challenge}`).join('\n')}
+${plan.challenges}
 ` : ''}
 
-${plan.success_factors && plan.success_factors.length > 0 ? `
+${plan.success_factors ? `
 ### ✅ 성공 요인
-${plan.success_factors.map(factor => `- ${factor}`).join('\n')}
+${plan.success_factors}
 ` : ''}
 
 ## 📈 시장 분석
@@ -789,19 +784,14 @@ ${plan.roi_prediction || '데이터 없음'}
             </div>
 
             {/* 핵심 기능 */}
-            {plan.key_features && plan.key_features.length > 0 && (
+            {plan.key_features && (
               <div className="mb-8">
                 <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-blue-600" />
                   핵심 기능
                 </h3>
-                <div className="space-y-3">
-                  {plan.key_features.map((feature: string, idx: number) => (
-                    <div key={idx} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="text-slate-700 selectable">{feature}</span>
-                    </div>
-                  ))}
+                <div className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                  {plan.key_features}
                 </div>
               </div>
             )}
@@ -875,37 +865,27 @@ ${plan.roi_prediction || '데이터 없음'}
             {/* 예상 도전과제와 성공 요인 */}
             {(plan.challenges || plan.success_factors) && (
               <div className="grid md:grid-cols-2 gap-6">
-                {plan.challenges && plan.challenges.length > 0 && (
+                {plan.challenges && (
                   <div className="bg-red-50 rounded-lg p-6 border border-red-200">
                     <h4 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
                       <AlertTriangle className="w-5 h-5 text-red-600" />
                       예상 도전과제
                     </h4>
-                    <ul className="space-y-2">
-                      {plan.challenges.map((challenge: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <div className="w-1 h-1 bg-red-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span className="text-sm text-red-700 selectable">{challenge}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="text-sm text-red-700 leading-relaxed whitespace-pre-line">
+                      {plan.challenges}
+                    </div>
                   </div>
                 )}
                 
-                {plan.success_factors && plan.success_factors.length > 0 && (
+                {plan.success_factors && (
                   <div className="bg-green-50 rounded-lg p-6 border border-green-200">
                     <h4 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
                       <CheckCircle className="w-5 h-5 text-green-600" />
                       성공 요인
                     </h4>
-                    <ul className="space-y-2">
-                      {plan.success_factors.map((factor: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <div className="w-1 h-1 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
-                          <span className="text-sm text-green-700 selectable">{factor}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="text-sm text-green-700 leading-relaxed whitespace-pre-line">
+                      {plan.success_factors}
+                    </div>
                   </div>
                 )}
               </div>
@@ -997,20 +977,9 @@ ${plan.roi_prediction || '데이터 없음'}
               <Sparkles className="w-6 h-6 text-indigo-600" />
               <h2 className="text-lg sm:text-xl font-semibold text-slate-800">주요 기능</h2>
             </div>
-            {plan.features && plan.features.length > 0 ? (
-              <div className="grid gap-4">
-                {plan.features.map((feature, index) => (
-                  <div key={index} className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl">
-                    <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-slate-700">
-                      {typeof feature === 'string' ? feature : (feature.detail_feature || feature.feature_id || '기능')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-500">기능 명세 정보가 없습니다.</p>
-            )}
+            <div className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+              {plan.features || '기능 명세 정보가 없습니다.'}
+            </div>
           </section>
 
           {/* 6. 시장 분석 */}
