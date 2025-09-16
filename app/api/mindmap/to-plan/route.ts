@@ -80,9 +80,13 @@ export async function POST(request: NextRequest) {
       problem_to_solve: planResult.ideaPlan.problem_to_solve || null,
       proposed_solution: planResult.ideaPlan.proposed_solution || null,
       
-      // 프로젝트 목표
-      main_objectives: planResult.ideaPlan.main_objectives || null,
-      success_metrics: planResult.ideaPlan.success_metrics || null,
+      // 프로젝트 목표 - 배열인 경우 적절히 처리
+      main_objectives: Array.isArray(planResult.ideaPlan.main_objectives) 
+        ? planResult.ideaPlan.main_objectives 
+        : planResult.ideaPlan.main_objectives || null,
+      success_metrics: Array.isArray(planResult.ideaPlan.success_metrics) 
+        ? planResult.ideaPlan.success_metrics 
+        : planResult.ideaPlan.success_metrics || null,
       
       // 프로젝트 범위
       project_scope_include: planResult.ideaPlan.project_scope_include || null,
