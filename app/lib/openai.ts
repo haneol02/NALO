@@ -978,7 +978,12 @@ function generateFallbackTopics(
 }
 
 // 마인드맵 기반 기획서 생성
-export async function generateMindmapPlan(mindmapData: { nodes: any[]; edges: any[] }, originalPrompt?: string) {
+export async function generateMindmapPlan(
+  mindmapData: { nodes: any[]; edges: any[] }, 
+  originalPrompt?: string, 
+  focusNode?: any, 
+  isFocusedGeneration?: boolean
+) {
   // 토큰 사용량 체크
   checkAndResetDailyUsage();
   const maxDailyTokens = 2000000;
@@ -990,7 +995,7 @@ export async function generateMindmapPlan(mindmapData: { nodes: any[]; edges: an
   // 마인드맵 구조 분석
   const structuredData = analyzeMindmapStructure(mindmapData);
   
-  const prompt = createMindmapPlanPrompt(structuredData, originalPrompt);
+  const prompt = createMindmapPlanPrompt(structuredData, originalPrompt, focusNode, isFocusedGeneration);
 
   console.log('=== OpenAI API 호출 시작 (마인드맵 기반 기획서 생성) ===');
   console.log('마인드맵 노드 수:', mindmapData.nodes.length);
@@ -1013,6 +1018,8 @@ export async function generateMindmapPlan(mindmapData: { nodes: any[]; edges: an
 4. 배열 필드는 반드시 배열 형태 ["item1", "item2"] 로 작성하세요
 5. null 값이 필요한 경우 null 을 사용하세요 (따옴표 없음)
 6. 마인드맵의 구조와 내용을 최대한 반영하여 상세한 기획서를 작성하세요
+7. **중요**: 비용은 만원 단위 숫자로 작성하세요 (예: 100만원 = 100, 50만원 = 50)
+8. **비용 필드 중요 규칙**: development_cost, operation_cost, marketing_cost, other_cost는 만원 단위 숫자만 입력 (100 = 100만원)
 
 마인드맵 분석 방법:
 - 루트 노드: 프로젝트의 메인 주제
@@ -1045,26 +1052,93 @@ export async function generateMindmapPlan(mindmapData: { nodes: any[]; edges: an
     console.log('OpenAI 응답 받음 (마인드맵 기반):', content.substring(0, 200) + '...');
     console.log('토큰 사용량:', tokensUsed);
 
-    // JSON 파싱
-    let ideaPlan;
+    // JSON 파싱 (개선된 버전)
+    let parsedResponse;
+    let jsonString = ''; // 변수 스코프를 catch 블록에서도 접근 가능하도록 이동
+    
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      const jsonString = jsonMatch ? jsonMatch[0] : content;
-      ideaPlan = JSON.parse(jsonString);
+      // 여러 패턴으로 JSON 추출 시도
+      // 패턴 1: 가장 큰 JSON 블록 찾기
+      const jsonMatches = content.match(/\{[\s\S]*?\}(?=\s*$|\s*```|\s*\n\n)/g);
+      if (jsonMatches && jsonMatches.length > 0) {
+        // 가장 긴 JSON 선택 (더 완전할 가능성이 높음)
+        jsonString = jsonMatches.reduce((longest, current) => 
+          current.length > longest.length ? current : longest
+        );
+      } else {
+        // 패턴 2: 첫 번째 { 부터 마지막 } 까지
+        const firstBrace = content.indexOf('{');
+        const lastBrace = content.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          jsonString = content.substring(firstBrace, lastBrace + 1);
+        } else {
+          jsonString = content;
+        }
+      }
+      
+      // JSON 정리 (일반적인 오류 수정)
+      jsonString = jsonString
+        .replace(/```json\s*/g, '')  // JSON 코드 블록 마커 제거
+        .replace(/```\s*/g, '')      // 일반 코드 블록 마커 제거
+        .replace(/,(\s*[}\]])/g, '$1') // 마지막 쉼표 제거
+        .trim();
+      
+      parsedResponse = JSON.parse(jsonString);
+      
+      // 응답 구조 확인 및 정규화
+      if (parsedResponse.ideaPlan) {
+        // 올바른 구조: { "ideaPlan": {...}, "keywords": [...] }
+        console.log('올바른 응답 구조 감지됨');
+      } else if (parsedResponse.project_name) {
+        // 잘못된 구조: 직접 필드들이 최상위에 있는 경우
+        console.log('잘못된 응답 구조 감지 - 수정 중');
+        parsedResponse = {
+          ideaPlan: parsedResponse,
+          keywords: parsedResponse.keywords || []
+        };
+      } else {
+        throw new Error('인식할 수 없는 응답 구조');
+      }
+      
+      // 기본 필드가 없으면 추가
+      if (!parsedResponse.ideaPlan.project_name) {
+        parsedResponse.ideaPlan.project_name = '마인드맵 기반 프로젝트';
+      }
+      if (!parsedResponse.ideaPlan.project_type) {
+        parsedResponse.ideaPlan.project_type = '기타';
+      }
+      
     } catch (parseError) {
       console.error('JSON 파싱 오류 (마인드맵 기반):', parseError);
+      console.error('시도한 JSON 문자열:', jsonString);
       console.error('원본 응답:', content);
-      throw new Error('AI 응답을 파싱하는 중 오류가 발생했습니다.');
+      
+      // 파싱 실패 시 기본 객체 생성
+      const fallbackPlan = {
+        ideaPlan: {
+          project_name: '마인드맵 기반 프로젝트',
+          service_summary: '브레인스토밍을 통해 구체화된 프로젝트 아이디어',
+          project_type: '기타',
+          core_idea: originalPrompt || '사용자 정의 프로젝트',
+          difficulty: 5,
+          market_potential: 5,
+          competition: 5
+        },
+        keywords: []
+      };
+      
+      console.log('기본 기획서 객체 사용:', fallbackPlan);
+      parsedResponse = fallbackPlan;
     }
 
     // 기획서 유효성 검증 (간단한 체크)
-    if (!ideaPlan || typeof ideaPlan !== 'object') {
+    if (!parsedResponse.ideaPlan || typeof parsedResponse.ideaPlan !== 'object') {
       throw new Error('생성된 기획서가 올바르지 않습니다.');
     }
 
     return {
-      ideaPlan,
-      keywords: extractKeywordsFromMindmap(mindmapData),
+      ideaPlan: parsedResponse.ideaPlan,
+      keywords: parsedResponse.keywords || extractKeywordsFromMindmap(mindmapData),
       tokensUsed
     };
 
@@ -1078,139 +1152,242 @@ export async function generateMindmapPlan(mindmapData: { nodes: any[]; edges: an
 function analyzeMindmapStructure(mindmapData: { nodes: any[]; edges: any[] }) {
   const { nodes, edges } = mindmapData;
   
-  // 루트 노드 찾기
-  const rootNode = nodes.find(node => node.data.type === 'root') || nodes[0];
+  // 데이터 유효성 검사
+  if (!nodes || !Array.isArray(nodes) || nodes.length === 0) {
+    throw new Error('유효하지 않은 마인드맵 노드 데이터입니다.');
+  }
   
-  // 계층별 노드 그룹화
+  if (!edges || !Array.isArray(edges)) {
+    throw new Error('유효하지 않은 마인드맵 엣지 데이터입니다.');
+  }
+  
+  // 루트 노드 찾기 (더 안전하게)
+  const rootNode = nodes.find(node => 
+    node && node.data && node.data.type === 'root'
+  ) || nodes.find(node => node && node.data && node.data.label) || nodes[0];
+  
+  if (!rootNode || !rootNode.id) {
+    throw new Error('유효한 루트 노드를 찾을 수 없습니다.');
+  }
+  
+  // 계층별 노드 그룹화 (순환 참조 방지 개선)
   const nodesByLevel: { [level: number]: any[] } = {};
-  const visited = new Set();
+  const visited = new Set<string>();
+  const processing = new Set<string>(); // 현재 처리 중인 노드 추적
+  const maxDepth = 10; // 최대 깊이 제한
   
   const buildLevels = (nodeId: string, level: number = 0) => {
-    if (visited.has(nodeId)) return;
+    // 순환 참조 검사
+    if (processing.has(nodeId)) {
+      console.warn(`순환 참조 감지됨: ${nodeId}`);
+      return;
+    }
+    
+    // 이미 방문한 노드나 최대 깊이 초과 시 종료
+    if (visited.has(nodeId) || level > maxDepth) return;
+    
+    processing.add(nodeId);
     visited.add(nodeId);
     
-    const node = nodes.find(n => n.id === nodeId);
-    if (!node) return;
+    const node = nodes.find(n => n && n.id === nodeId);
+    if (!node || !node.data) {
+      processing.delete(nodeId);
+      return;
+    }
     
     if (!nodesByLevel[level]) nodesByLevel[level] = [];
     nodesByLevel[level].push(node);
     
-    // 자식 노드들 찾기
-    const childEdges = edges.filter(edge => edge.source === nodeId);
+    // 자식 노드들 찾기 (유효한 엣지만 필터링)
+    const childEdges = edges.filter(edge => 
+      edge && edge.source === nodeId && edge.target && 
+      nodes.some(n => n.id === edge.target)
+    );
+    
     childEdges.forEach(edge => {
       buildLevels(edge.target, level + 1);
     });
+    
+    processing.delete(nodeId);
   };
   
   buildLevels(rootNode.id);
   
-  // 노드 타입별 분류
+  // 노드 타입별 분류 (안전하게)
   const nodesByType: { [type: string]: any[] } = {};
   nodes.forEach(node => {
-    const type = node.data.type || 'idea';
-    if (!nodesByType[type]) nodesByType[type] = [];
-    nodesByType[type].push(node);
+    if (node && node.data) {
+      const type = node.data.type || 'idea';
+      if (!nodesByType[type]) nodesByType[type] = [];
+      nodesByType[type].push(node);
+    }
   });
+  
+  // 유효한 노드만 필터링
+  const validNodes = nodes.filter(node => node && node.data && node.data.label);
   
   return {
     rootNode,
     nodesByLevel,
     nodesByType,
-    totalNodes: nodes.length,
+    totalNodes: validNodes.length,
     totalEdges: edges.length,
-    maxDepth: Math.max(...Object.keys(nodesByLevel).map(Number))
+    maxDepth: Object.keys(nodesByLevel).length > 0 ? Math.max(...Object.keys(nodesByLevel).map(Number)) : 0
   };
 }
 
 // 마인드맵 기반 프롬프트 생성
-function createMindmapPlanPrompt(structuredData: any, originalPrompt?: string) {
+function createMindmapPlanPrompt(structuredData: any, originalPrompt?: string, focusNode?: any, isFocusedGeneration?: boolean) {
   const { rootNode, nodesByLevel, nodesByType } = structuredData;
   
-  let prompt = `마인드맵을 기반으로 상세한 프로젝트 기획서를 작성해주세요.
+  // 안전한 라벨 추출
+  const getRootLabel = () => {
+    if (rootNode && rootNode.data && rootNode.data.label) {
+      return rootNode.data.label;
+    }
+    return '새로운 프로젝트';
+  };
+  
+  let prompt = `${isFocusedGeneration ? '선택된 노드를 중심으로' : '전체 마인드맵을 기반으로'} 상세한 프로젝트 기획서를 작성해주세요.
 
 == 프로젝트 개요 ==
-프로젝트 주제: "${rootNode.data.label}"
-${rootNode.data.description ? `주제 설명: "${rootNode.data.description}"` : ''}
+${isFocusedGeneration ? `포커스 노드: "${focusNode?.data?.label || getRootLabel()}"` : `프로젝트 주제: "${getRootLabel()}"`}
+${isFocusedGeneration && focusNode?.data?.description ? `포커스 설명: "${focusNode.data.description}"` : ''}
+${!isFocusedGeneration && rootNode && rootNode.data && rootNode.data.description ? `주제 설명: "${rootNode.data.description}"` : ''}
 ${originalPrompt ? `원본 요청: "${originalPrompt}"` : ''}
+${isFocusedGeneration ? '\n== 주의: 이것은 전체 마인드맵의 일부분입니다 ==' : ''}
+${isFocusedGeneration ? `선택된 "${focusNode?.data?.label || '노드'}" 및 그 하위 노드들만을 기반으로 기획서를 작성합니다.` : ''}
 
 == 마인드맵 구조 분석 ==
 `;
 
-  // 계층별 노드 정보
-  Object.keys(nodesByLevel).forEach(level => {
-    const levelNum = parseInt(level);
-    const nodes = nodesByLevel[levelNum];
-    
-    prompt += `\n${levelNum === 0 ? '루트' : `${levelNum}차`} 레벨 (${nodes.length}개 노드):\n`;
-    nodes.forEach((node: any) => {
-      prompt += `- ${node.data.label} (${node.data.type})`;
-      if (node.data.description) {
-        prompt += `: ${node.data.description}`;
+  // 계층별 노드 정보 (안전하게)
+  if (nodesByLevel && Object.keys(nodesByLevel).length > 0) {
+    Object.keys(nodesByLevel).forEach(level => {
+      const levelNum = parseInt(level);
+      const nodes = nodesByLevel[levelNum];
+      
+      if (nodes && nodes.length > 0) {
+        prompt += `\n${levelNum === 0 ? '루트' : `${levelNum}차`} 레벨 (${nodes.length}개 노드):\n`;
+        nodes.forEach((node: any) => {
+          if (node && node.data && node.data.label) {
+            prompt += `- ${node.data.label}`;
+            if (node.data.type) {
+              prompt += ` (${node.data.type})`;
+            }
+            if (node.data.description) {
+              prompt += `: ${node.data.description}`;
+            }
+            prompt += '\n';
+          }
+        });
       }
-      prompt += '\n';
     });
-  });
+  } else {
+    prompt += `\n루트 레벨 (1개 노드):\n- ${getRootLabel()}\n`;
+  }
   
-  // 노드 타입별 분류
+  // 노드 타입별 분류 (안전하게)
   prompt += `\n== 노드 타입별 분류 ==\n`;
-  Object.keys(nodesByType).forEach(type => {
-    const nodes = nodesByType[type];
-    prompt += `\n${getTypeDescription(type)} (${nodes.length}개):\n`;
-    nodes.forEach((node: any) => {
-      prompt += `- ${node.data.label}`;
-      if (node.data.description) {
-        prompt += `: ${node.data.description}`;
+  if (nodesByType && Object.keys(nodesByType).length > 0) {
+    Object.keys(nodesByType).forEach(type => {
+      const nodes = nodesByType[type];
+      if (nodes && nodes.length > 0) {
+        prompt += `\n${getTypeDescription(type)} (${nodes.length}개):\n`;
+        nodes.forEach((node: any) => {
+          if (node && node.data && node.data.label) {
+            prompt += `- ${node.data.label}`;
+            if (node.data.description) {
+              prompt += `: ${node.data.description}`;
+            }
+            prompt += '\n';
+          }
+        });
       }
-      prompt += '\n';
     });
-  });
+  } else {
+    prompt += `\n아이디어 (1개):\n- ${getRootLabel()}\n`;
+  }
 
   prompt += `\n이 마인드맵 정보를 바탕으로 다음 JSON 형식의 상세한 프로젝트 기획서를 작성해주세요:
 
 {
-  "project_name": "프로젝트명",
-  "service_summary": "서비스 요약 (1-2줄)",
-  "project_type": "웹서비스|모바일앱|시스템|플랫폼|기타",
-  "core_idea": "핵심 아이디어",
-  "background": "프로젝트 배경",
-  "target_customer": "타겟 고객",
-  "problem_to_solve": "해결하고자 하는 문제",
-  "proposed_solution": "제안하는 해결책",
-  "main_objectives": "주요 목표",
-  "success_metrics": "성공 지표",
-  "project_scope_include": "프로젝트 범위 (포함사항)",
-  "project_scope_exclude": "프로젝트 범위 (제외사항)",
-  "features": ["주요기능1", "주요기능2", "주요기능3"],
-  "key_features": ["핵심기능1", "핵심기능2"],
-  "project_phases": ["1단계: 설명", "2단계: 설명", "3단계: 설명"],
-  "difficulty": 5,
-  "market_potential": 7,
-  "competition": 6,
-  "challenges": ["도전과제1", "도전과제2"],
-  "success_factors": ["성공요인1", "성공요인2"],
-  "market_analysis": "시장 분석",
-  "competitors": "경쟁사 분석",
-  "differentiation": "차별화 전략",
-  "swot_strengths": "강점",
-  "swot_weaknesses": "약점",
-  "swot_opportunities": "기회",
-  "swot_threats": "위협",
-  "tech_stack": "기술 스택",
-  "system_architecture": "시스템 아키텍처",
-  "database_type": "데이터베이스",
-  "development_environment": "개발 환경",
-  "security_requirements": "보안 요구사항",
-  "expected_effects": "기대 효과",
-  "business_impact": "비즈니스 임팩트",
-  "social_value": "사회적 가치",
-  "roi_prediction": "ROI 예측",
-  "risk_factors": "위험 요소",
-  "risk_response": "위험 대응",
-  "contingency_plan": "비상 계획",
-  "development_cost": 1000000,
-  "operation_cost": 500000,
-  "marketing_cost": 300000,
-  "other_cost": 200000
+  "ideaPlan": {
+    "project_name": "마인드맵 루트 노드나 포커스 노드를 기반으로 한 프로젝트명",
+    "service_summary": "마인드맵 구조를 바탕으로 한 서비스 핵심 가치 요약 (1-2줄)",
+    "project_type": "프로젝트 유형을 구체적으로 분류 (웹서비스, 모바일앱, SaaS, 플랫폼 등)",
+    "core_idea": "마인드맵의 핵심 아이디어와 가치를 200-400자로 상세하게 설명하여 프로젝트의 본질과 차별점을 명확히 제시",
+    "background": "마인드맵에서 도출한 프로젝트 배경과 필요성을 200-400자로 구체적으로 설명하며 현재 시장 상황, 사용자 니즈, 해결해야 할 문제의 맥락을 포함하여 작성",
+    "target_customer": "마인드맵에서 식별된 주요 타겟 고객층을 구체적으로 세분화하여 설명하고, 각 고객군의 특성과 니즈를 명시",
+    "problem_to_solve": "마인드맵에서 도출한 해결하려는 핵심 문제를 200-400자로 현실적이고 구체적으로 설명하며, 문제의 규모와 영향도를 포함하여 작성",
+    "proposed_solution": "마인드맵 구조를 바탕으로 한 해결책을 200-400자로 기술적 접근법과 비즈니스 관점에서 상세하게 설명하고, 구체적인 구현 방안과 차별점을 포함",
+    
+    "main_objectives": "마인드맵에서 도출한 프로젝트의 주요 목표를 3-5개로 구체적이고 측정 가능하게 명시하여 프로젝트 성공 기준을 제시",
+    "success_metrics": "성공 지표를 구체적인 수치와 달성 시점을 포함하여 명시 (예: 사용자 1만명 달성, 월매출 1000만원 등)",
+    
+    "project_scope_include": "마인드맵에서 식별된 프로젝트에 포함될 구체적인 기능, 서비스, 범위를 상세히 명시",
+    "project_scope_exclude": "프로젝트에서 제외될 기능이나 범위를 명확히 명시하여 경계를 설정",
+    
+    "features": ["마인드맵의 feature 노드들을 기반으로 한 핵심기능1 - 구체적 설명", "핵심기능2 - 구체적 설명", "핵심기능3 - 구체적 설명", "핵심기능4 - 구체적 설명", "핵심기능5 - 구체적 설명"],
+    "key_features": ["가장 중요한 핵심기능1 - 구체적 설명", "핵심기능2 - 구체적 설명", "핵심기능3 - 구체적 설명"],
+    
+    "difficulty": 기술_난이도_1부터_10까지_정수_숫자,
+    "market_potential": 시장_잠재력_1부터_10까지_정수_숫자,
+    "competition": 경쟁_강도_1부터_10까지_정수_숫자,
+    "challenges": ["마인드맵에서 식별된_예상되는_도전과제1", "예상되는_도전과제2", "예상되는_도전과제3"],
+    "success_factors": ["마인드맵 기반_성공_요인1", "성공_요인2", "성공_요인3"],
+    
+    "market_analysis": "마인드맵 정보를 바탕으로 한 시장 규모, 성장률, 트렌드 등을 포함한 시장 분석을 200-400자로 상세히 작성",
+    "competitors": "주요 경쟁사 3-5개와 각각의 특징, 강점, 약점을 구체적으로 분석",
+    "differentiation": "마인드맵에서 도출한 경쟁사 대비 차별화 포인트를 구체적이고 설득력 있게 설명",
+    
+    "swot_strengths": "마인드맵에서 식별된 프로젝트의 강점을 내부 역량, 기술력, 팀 등의 관점에서 구체적으로 분석",
+    "swot_weaknesses": "프로젝트의 약점과 한계를 솔직하고 현실적으로 분석",
+    "swot_opportunities": "외부 환경에서 찾을 수 있는 기회 요소들을 구체적으로 명시",
+    "swot_threats": "외부 위험 요소와 잠재적 위협들을 현실적으로 분석",
+    
+    "tech_stack": "마인드맵의 기술 관련 노드들을 참고하여 이 프로젝트에 가장 적합한 기술 스택을 선택하여 프론트엔드, 백엔드, 데이터베이스로 구분해 명시",
+    "system_architecture": "시스템 아키텍처를 확장성, 보안, 성능 관점에서 200-300자로 설명",
+    "database_type": "사용할 데이터베이스 종류와 선택 이유를 구체적으로 명시",
+    "development_environment": "개발 환경, 협업 도구, 배포 방식 등을 구체적으로 설명",
+    "security_requirements": "보안 요구사항과 구현 방안을 데이터 보호, 접근 제어 등의 관점에서 설명",
+    
+    "project_phases": [
+      {
+        "phase": "1단계: MVP 개발 (4-6주)",
+        "duration": "구체적인 소요 기간",
+        "tasks": ["마인드맵 기반 세부 작업1", "세부 작업2", "세부 작업3"],
+        "deliverables": ["구체적 산출물1", "구체적 산출물2"]
+      },
+      {
+        "phase": "2단계: 베타 테스트 및 개선 (2-3주)",
+        "duration": "구체적인 소요 기간",
+        "tasks": ["테스트 작업1", "피드백 수집", "개선사항 반영"],
+        "deliverables": ["베타 버전", "테스트 리포트"]
+      },
+      {
+        "phase": "3단계: 정식 출시 및 운영 (지속적)",
+        "duration": "구체적인 소요 기간",
+        "tasks": ["정식 출시", "마케팅 진행", "운영 및 유지보수"],
+        "deliverables": ["정식 서비스", "초기 사용자 확보"]
+      }
+    ],
+    
+    "expected_effects": "마인드맵에서 도출한 프로젝트 완료 후 기대되는 효과를 사용자, 비즈니스, 기술적 관점에서 구체적으로 설명",
+    "business_impact": "비즈니스에 미칠 구체적인 영향과 가치를 매출, 효율성, 경쟁력 등의 관점에서 설명",
+    "social_value": "사회적 가치와 기여도를 구체적으로 설명",
+    "roi_prediction": "투자 대비 수익률 예측을 구체적인 수치와 근거를 포함하여 설명",
+    
+    "risk_factors": "프로젝트 진행 시 발생할 수 있는 주요 위험 요소들을 기술적, 시장적, 운영적 관점에서 분석",
+    "risk_response": "각 위험 요소에 대한 구체적인 대응 방안과 완화 전략을 설명",
+    "contingency_plan": "최악의 시나리오에 대비한 비상 계획을 구체적으로 수립",
+    
+    "development_cost": 만원단위_숫자_50부터_500사이_현실적_개발비용_예시_100은_100만원,
+    "operation_cost": 만원단위_숫자_10부터_50사이_현실적_운영비용_예시_30은_30만원,
+    "marketing_cost": 만원단위_숫자_20부터_100사이_현실적_마케팅비용_예시_50은_50만원,
+    "other_cost": 만원단위_숫자_5부터_30사이_현실적_기타비용_예시_10은_10만원
+  },
+  "keywords": ["마인드맵에서_추출한_핵심_키워드1", "핵심_키워드2", "핵심_키워드3", "핵심_키워드4", "핵심_키워드5"]
 }`;
 
   return prompt;

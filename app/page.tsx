@@ -22,6 +22,8 @@ export default function HomePage() {
   const [researchData, setResearchData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [userPrompt, setUserPrompt] = useState<string>('');
+  const [generatedPlanId, setGeneratedPlanId] = useState<string | null>(null);
+  const [showPlanCompleteModal, setShowPlanCompleteModal] = useState(false);
 
   const handleStartTopicExploration = async (prompt: string) => {
     console.log('=== 주제 탐색 시작 ===');
@@ -251,9 +253,16 @@ export default function HomePage() {
     setCurrentStep('research');
   };
 
-  const handleMindmapToPlan = async (mindmapData: { nodes: any[]; edges: any[] }) => {
+  const handleMindmapToPlan = async (mindmapData: { nodes: any[]; edges: any[]; focusNode?: any }) => {
     console.log('=== 마인드맵에서 기획서 생성 시작 (개선된 버전) ===');
     console.log('마인드맵 데이터:', mindmapData);
+    
+    // 포커스 노드가 있는지 확인
+    const isFocusedGeneration = mindmapData.focusNode !== undefined;
+    if (isFocusedGeneration) {
+      console.log(`포커스 노드: "${mindmapData.focusNode.data.label}"`);
+      console.log(`포함 노드 수: ${mindmapData.nodes.length} (전체 마인드맵의 일부)`);
+    }
     
     setIsGenerating(true);
     setError(null);
@@ -266,8 +275,13 @@ export default function HomePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          mindmapData: mindmapData,
-          originalPrompt: userPrompt
+          mindmapData: {
+            nodes: mindmapData.nodes,
+            edges: mindmapData.edges
+          },
+          originalPrompt: userPrompt,
+          focusNode: mindmapData.focusNode,
+          isFocusedGeneration: isFocusedGeneration
         }),
       });
 
@@ -283,10 +297,11 @@ export default function HomePage() {
       console.log('기획서 ID:', data.planId);
       console.log('토큰 사용량:', data.tokensUsed);
       
-      // 기획서가 생성되었으므로 plan 페이지로 직접 이동
+      // 기획서가 생성되었으므로 완료 모달 표시
       if (data.planId) {
-        console.log(`기획서 생성 완료! /plan/${data.planId}로 이동합니다.`);
-        window.location.href = `/plan/${data.planId}`;
+        console.log(`기획서 생성 완료! 완료 모달 표시`);
+        setGeneratedPlanId(data.planId);
+        setShowPlanCompleteModal(true);
         return;
       }
 
@@ -453,6 +468,89 @@ export default function HomePage() {
             </div>
           )}
         </>
+      )}
+
+      {/* 기획서 생성 중 모달 */}
+      {isGenerating && currentStep === 'mindmap' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md mx-4 shadow-2xl">
+            <div className="text-center">
+              <div className="inline-block relative mb-6">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-500 border-t-transparent"></div>
+                <div className="absolute inset-2 animate-pulse rounded-full bg-gradient-to-r from-purple-400 to-white opacity-20"></div>
+              </div>
+              
+              <h3 className="text-xl font-semibold text-slate-700 mb-2">
+                기획서 생성 중...
+              </h3>
+              <p className="text-sm text-slate-500 mb-4">
+                마인드맵을 분석하여 상세한 프로젝트 기획서를 작성하고 있습니다.
+              </p>
+              
+              {/* 진행 단계 표시 */}
+              <div className="flex justify-center items-center gap-1">
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"
+                    style={{
+                      animationDelay: `${i * 0.3}s`
+                    }}
+                  ></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 기획서 생성 완료 모달 */}
+      {showPlanCompleteModal && generatedPlanId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md mx-4 shadow-2xl">
+            <div className="text-center">
+              <div className="inline-block relative mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+              
+              <h3 className="text-xl font-semibold text-slate-700 mb-2">
+                기획서 생성 완료!
+              </h3>
+              <p className="text-sm text-slate-500 mb-6">
+                마인드맵을 기반으로 상세한 프로젝트 기획서가 생성되었습니다.
+              </p>
+              
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    window.open(`/plan/${generatedPlanId}`, '_blank');
+                    setShowPlanCompleteModal(false);
+                    setGeneratedPlanId(null);
+                  }}
+                  className="btn-primary px-6 py-3 rounded-lg flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  새 탭에서 보기
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPlanCompleteModal(false);
+                    setGeneratedPlanId(null);
+                  }}
+                  className="btn-secondary px-6 py-3 rounded-lg"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Main Content */}

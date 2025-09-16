@@ -5,7 +5,7 @@ import { createClient } from '@/app/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { mindmapData, originalPrompt } = await request.json();
+    const { mindmapData, originalPrompt, focusNode, isFocusedGeneration } = await request.json();
     
     if (!mindmapData || !mindmapData.nodes || !mindmapData.edges) {
       return NextResponse.json(
@@ -25,14 +25,21 @@ export async function POST(request: NextRequest) {
     console.log('노드 수:', mindmapData.nodes.length);
     console.log('엣지 수:', mindmapData.edges.length);
     console.log('원본 프롬프트:', originalPrompt);
+    console.log('포커스 노드:', focusNode ? focusNode.data.label : '전체 마인드맵');
+    console.log('부분 생성:', isFocusedGeneration ? 'YES' : 'NO');
     console.log('======================================');
     
-    // 마인드맵 데이터를 기획서로 변환
-    const planResult = await generateMindmapPlan(mindmapData, originalPrompt);
+    // 마인드맵 데이터를 기획서로 변환 (포커스 정보 포함)
+    const planResult = await generateMindmapPlan(mindmapData, originalPrompt, focusNode, isFocusedGeneration);
     
     if (!planResult.ideaPlan) {
       throw new Error('기획서 생성에 실패했습니다.');
     }
+    
+    console.log('=== 파싱된 기획서 데이터 확인 ===');
+    console.log('planResult.ideaPlan:', planResult.ideaPlan);
+    console.log('project_type 값:', planResult.ideaPlan.project_type);
+    console.log('=====================================');
     
     // 현재 날짜 생성 (YYYY.MM.DD 형식)
     const currentDate = new Date().toLocaleDateString('ko-KR', { 
@@ -49,7 +56,15 @@ export async function POST(request: NextRequest) {
       coretech: planResult.ideaPlan.tech_stack || '',
       target: planResult.ideaPlan.target_customer || '',
       keywords: planResult.keywords || [],
-      mindmapStructure: mindmapData // 마인드맵 구조 정보 포함
+      mindmapStructure: {
+        nodes: mindmapData.nodes,
+        edges: mindmapData.edges,
+        nodeCount: mindmapData.nodes.length,
+        edgeCount: mindmapData.edges.length,
+        focusNode: focusNode || null,
+        isFocusedGeneration: isFocusedGeneration || false,
+        generatedAt: new Date().toISOString()
+      }
     };
 
     // DB에 기획서 저장
@@ -127,14 +142,8 @@ export async function POST(request: NextRequest) {
       user_id: user?.id || null,
       author_email: user?.email || null,
       
-      // 마인드맵 메타데이터 (JSON으로 저장)
-      mindmap_structure: JSON.stringify({
-        nodes: mindmapData.nodes,
-        edges: mindmapData.edges,
-        nodeCount: mindmapData.nodes.length,
-        edgeCount: mindmapData.edges.length,
-        generatedAt: new Date().toISOString()
-      })
+      // 마인드맵 메타데이터는 현재 DB 스키마에 없으므로 제거
+      // mindmap_structure: JSON.stringify({...})  - 추후 DB 스키마 업데이트 시 추가 예정
     };
     
     const savedPlan = await dbHelpers.saveIdeaPlan(planData);

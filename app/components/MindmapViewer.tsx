@@ -410,7 +410,7 @@ const nodeTypes: NodeTypes = {
 
 interface MindmapViewerProps {
   initialPrompt?: string;
-  onGeneratePlan?: (mindmapData: { nodes: Node[]; edges: Edge[] }) => void;
+  onGeneratePlan?: (mindmapData: { nodes: Node[]; edges: Edge[]; focusNode?: any }) => void;
   onBack?: () => void;
 }
 
@@ -1632,7 +1632,56 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
 
   // 크기 변화 감지는 제거하고 더 간단한 조건 사용
 
-  // 기획서 생성
+  // 선택된 노드와 하위 노드 추출
+  const getNodeSubtree = useCallback((nodeId: string) => {
+    const subtreeNodes = new Set<string>();
+    const subtreeEdges: Edge[] = [];
+    
+    // DFS로 하위 노드들 찾기
+    const findSubNodes = (currentNodeId: string) => {
+      subtreeNodes.add(currentNodeId);
+      
+      // 현재 노드에서 시작하는 모든 엣지 찾기
+      const childEdges = edges.filter(edge => edge.source === currentNodeId);
+      
+      childEdges.forEach(edge => {
+        subtreeEdges.push(edge);
+        // 자식 노드들도 재귀적으로 처리
+        if (!subtreeNodes.has(edge.target)) {
+          findSubNodes(edge.target);
+        }
+      });
+    };
+    
+    findSubNodes(nodeId);
+    
+    // 해당하는 실제 노드 객체들 찾기
+    const filteredNodes = nodes.filter(node => subtreeNodes.has(node.id));
+    
+    return {
+      nodes: filteredNodes,
+      edges: subtreeEdges
+    };
+  }, [nodes, edges]);
+
+  // 선택된 노드 기반 기획서 생성
+  const handleGeneratePlanFromNode = useCallback((nodeId: string) => {
+    const subtree = getNodeSubtree(nodeId);
+    const selectedNode = nodes.find(n => n.id === nodeId);
+    
+    if (onGeneratePlan && selectedNode) {
+      console.log(`노드 "${selectedNode.data.label}" 기반 기획서 생성 시작`);
+      console.log(`포함 노드 수: ${subtree.nodes.length}, 엣지 수: ${subtree.edges.length}`);
+      
+      onGeneratePlan({
+        nodes: subtree.nodes,
+        edges: subtree.edges,
+        focusNode: selectedNode // 포커스 노드 정보 추가
+      });
+    }
+  }, [nodes, onGeneratePlan, getNodeSubtree]);
+
+  // 전체 기획서 생성
   const handleGeneratePlan = () => {
     if (onGeneratePlan) {
       onGeneratePlan({ nodes, edges });
@@ -2347,6 +2396,18 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
               >
                 <Sparkles className="w-4 h-4" />
                 <span className="whitespace-nowrap">AI 확장</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (contextMenu.nodeId) {
+                    handleGeneratePlanFromNode(contextMenu.nodeId);
+                  }
+                  setContextMenu(null);
+                }}
+                className="w-full px-3 py-2 text-left text-sm text-purple-600 hover:bg-purple-50 flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                <span className="whitespace-nowrap">기획서 생성</span>
               </button>
               <hr className="my-1 border-gray-200/50" />
               <button
