@@ -676,14 +676,17 @@ export async function generateIdeaPlan(idea: any, researchData?: any) {
       
       const parsed = JSON.parse(cleanedJson);
       
+      // 배열 필드 후처리 (문자열로 저장된 배열을 실제 배열로 변환)
+      const processedPlan = processArrayFields(parsed.ideaPlan);
+      
       // 기획서 구조 검증
-      if (!validateIdeaPlanResponse(parsed)) {
+      if (!validateIdeaPlanResponse({...parsed, ideaPlan: processedPlan})) {
         console.warn('기획서 JSON 구조가 예상과 다름');
         throw new Error('기획서 JSON 구조가 예상과 다릅니다.');
       }
       
       return {
-        ideaPlan: parsed.ideaPlan,
+        ideaPlan: processedPlan,
         keywords: parsed.keywords || [],
         tokensUsed,
         success: true,
@@ -881,6 +884,43 @@ export async function generateTopicExpansions(
     // Fallback 주제 반환  
     return generateFallbackTopics(keywords, parentTopic, level, 0);
   }
+}
+
+// 배열 필드 후처리 함수 - 문자열로 저장된 배열을 실제 배열로 변환
+function processArrayFields(ideaPlan: any): any {
+  const processedPlan = { ...ideaPlan };
+  
+  // 배열로 처리해야 하는 필드들
+  const arrayFields = ['main_objectives', 'success_metrics'];
+  
+  arrayFields.forEach(field => {
+    if (processedPlan[field]) {
+      if (typeof processedPlan[field] === 'string') {
+        // 문자열이 배열 형태인지 확인
+        const stringValue = processedPlan[field].trim();
+        
+        // JSON 배열 형태로 시작하는지 확인
+        if (stringValue.startsWith('[') && stringValue.endsWith(']')) {
+          try {
+            // JSON 파싱 시도
+            const parsedArray = JSON.parse(stringValue);
+            if (Array.isArray(parsedArray)) {
+              processedPlan[field] = parsedArray;
+              console.log(`${field} 배열 파싱 성공:`, parsedArray);
+            }
+          } catch (e) {
+            console.warn(`${field} JSON 파싱 실패, 문자열 그대로 유지`);
+          }
+        } else {
+          // 배열 형태가 아닌 일반 문자열인 경우 그대로 유지
+          console.log(`${field}는 일반 문자열로 유지:`, stringValue);
+        }
+      }
+      // 이미 배열인 경우는 그대로 유지
+    }
+  });
+  
+  return processedPlan;
 }
 
 // 기획서 전용 JSON 정리 함수
@@ -1140,8 +1180,11 @@ export async function generateMindmapPlan(
       throw new Error('생성된 기획서가 올바르지 않습니다.');
     }
 
+    // 배열 필드 후처리
+    const processedPlan = processArrayFields(parsedResponse.ideaPlan);
+    
     return {
-      ideaPlan: parsedResponse.ideaPlan,
+      ideaPlan: processedPlan,
       keywords: parsedResponse.keywords || extractKeywordsFromMindmap(mindmapData),
       tokensUsed
     };
