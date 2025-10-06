@@ -1,9 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 // 텍스트에서 제안사항 추출하는 함수
 function extractSuggestionsFromText(text: string, selectedNode: any) {
@@ -226,8 +221,8 @@ function getDefaultSuggestions(selectedNode: any) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { selectedNode, context, expandOptions = {} } = await request.json();
-    
+    const { selectedNode, context, expandOptions = {}, apiKey } = await request.json();
+
     console.log('=== 마인드맵 AI 확장 요청 ===');
     console.log('선택된 노드:', selectedNode);
     console.log('컨텍스트:', context);
@@ -236,6 +231,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: '선택된 노드 정보가 없습니다.' },
         { status: 400 }
+      );
+    }
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { success: false, error: 'API 키가 필요합니다. 홈 화면에서 API 키를 입력해주세요.' },
+        { status: 401 }
       );
     }
 
@@ -385,10 +387,16 @@ ${selectedNode.data.description ? `- **설명 중심 확장**: "${selectedNode.d
 `;
 
     console.log('=== OpenAI API 호출 시작 ===');
-    
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
         {
           role: 'system',
           content: `당신은 전문적인 프로젝트 컨설턴트이자 창의적 사고 전문가입니다.
@@ -435,23 +443,30 @@ ${mode === 'simple' ?
 
 반드시 JSON 형식으로만 응답하세요.`
         },
-        {
-          role: 'user',
-          content: intelligentPrompt
-        }
-      ],
-      max_tokens: 1200,
-      temperature: 0.7,
+          {
+            role: 'user',
+            content: intelligentPrompt
+          }
+        ],
+        max_tokens: 1200,
+        temperature: 0.7,
+      }),
     });
 
-    const response = completion.choices[0]?.message?.content;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`OpenAI API 오류: ${errorData.error?.message || response.statusText}`);
+    }
+
+    const completion = await response.json();
+    const aiResponse = completion.choices[0]?.message?.content;
     const tokensUsed = completion.usage?.total_tokens || 0;
     
     console.log('=== OpenAI API 응답 ===');
     console.log('사용된 토큰:', tokensUsed);
-    console.log('응답 내용:', response);
+    console.log('응답 내용:', aiResponse);
 
-    if (!response) {
+    if (!aiResponse) {
       throw new Error('OpenAI 응답이 비어있습니다.');
     }
 
@@ -520,9 +535,9 @@ ${mode === 'simple' ?
       
       return cleanedResponse;
     };
-    
+
     try {
-      const cleanedResponse = parseJsonResponse(response);
+      const cleanedResponse = parseJsonResponse(aiResponse);
       console.log('정제된 응답:', cleanedResponse);
       
       const parsed = JSON.parse(cleanedResponse);
@@ -541,12 +556,12 @@ ${mode === 'simple' ?
       
     } catch (parseError) {
       console.error('JSON 파싱 오류:', parseError);
-      console.log('원본 응답:', response);
+      console.log('원본 응답:', aiResponse);
       
       // 추가 파싱 시도: 더 관대한 방법들
       try {
         // 1. 정규식으로 JSON 부분만 추출 시도
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           console.log('정규식으로 JSON 추출 시도...');
           const extractedJson = parseJsonResponse(jsonMatch[0]);
@@ -559,11 +574,11 @@ ${mode === 'simple' ?
         }
       } catch (secondParseError) {
         console.error('두 번째 파싱 시도도 실패:', secondParseError);
-        
+
         // 2. 텍스트에서 키워드 기반 정보 추출 시도
         try {
           console.log('텍스트 파싱 시도...');
-          const textParsedSuggestions = extractSuggestionsFromText(response, selectedNode);
+          const textParsedSuggestions = extractSuggestionsFromText(aiResponse, selectedNode);
           if (textParsedSuggestions.length > 0) {
             suggestions = textParsedSuggestions;
             analysis = {

@@ -20,6 +20,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Plus, Lightbulb, FileText, Sparkles, Target, Wrench, Settings, X, ChevronUp, ChevronDown, Edit3, Trash2, Eye, ArrowUp, ArrowDown, Save, Upload, Download } from 'lucide-react';
+import { getApiKey } from '@/app/lib/apiKeyStorage';
 
 // 노드 타입 정의
 interface MindmapNodeData {
@@ -1115,7 +1116,12 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
       console.log('현재 루트 노드:', currentRootNode?.data.label);
       console.log('노드 계층 경로:', nodePath.map(n => n.data.label).join(' → '));
       console.log('전달할 컨텍스트:', currentContext);
-      
+
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('API 키가 설정되지 않았습니다. 홈 화면에서 API 키를 입력해주세요.');
+      }
+
       const response = await fetch('/api/mindmap/expand', {
         method: 'POST',
         headers: {
@@ -1124,6 +1130,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
         body: JSON.stringify({
           selectedNode,
           context: currentContext,
+          apiKey,
           expandOptions: {
             mode: aiExpandMode,
             category: aiExpandCategory,
@@ -1228,7 +1235,12 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
     try {
       console.log('=== 자동 설정 시작 ===');
       console.log('현재 루트 노드 정보:', rootNode.data.label, rootNode.data.description);
-      
+
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('API 키가 설정되지 않았습니다. 홈 화면에서 API 키를 입력해주세요.');
+      }
+
       const response = await fetch('/api/mindmap/auto-setup', {
         method: 'POST',
         headers: {
@@ -1236,7 +1248,8 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
         },
         body: JSON.stringify({
           rootNode,
-          context: rootNode.data.label
+          context: rootNode.data.label,
+          apiKey
         }),
       });
 

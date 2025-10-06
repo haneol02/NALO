@@ -4,19 +4,31 @@ import { generateTopicsFromKeywords } from '@/app/lib/simple-topic-generator';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 
+    const {
       prompt = '',
-      keywords = [], 
+      keywords = [],
       parentTopic = null,
       level = 1,
-      additionalPrompt = null
-    }: { 
+      additionalPrompt = null,
+      apiKey
+    }: {
       prompt?: string,
-      keywords?: string[], 
+      keywords?: string[],
       parentTopic?: string | null,
       level?: number,
-      additionalPrompt?: string | null
+      additionalPrompt?: string | null,
+      apiKey?: string
     } = body;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'API 키가 필요합니다.',
+        },
+        { status: 401 }
+      );
+    }
 
     console.log('=== GPT 주제 확장 요청 ===');
     console.log('사용자 프롬프트:', prompt);
@@ -37,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     // GPT 기반 주제 생성
-    const topics = await generateTopicsFromKeywords(keywords, parentTopic || undefined, level, additionalPrompt || undefined, prompt || undefined);
+    const topics = await generateTopicsFromKeywords(keywords, apiKey, parentTopic || undefined, level, additionalPrompt || undefined, prompt || undefined);
     
     console.log(`[SUCCESS] 레벨 ${level} 주제 ${topics.length}개 생성 완료`);
 

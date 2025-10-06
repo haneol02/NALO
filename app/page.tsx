@@ -7,7 +7,9 @@ import ResultDisplay from './components/ResultDisplay';
 import ResearchResults from './components/ResearchResults';
 import MindmapViewer from './components/MindmapViewer';
 import AuthButton from './components/AuthButton';
+import ApiKeyInput from './components/ApiKeyInput';
 import { AlertTriangle, Frown, Search } from 'lucide-react';
+import { getApiKey } from '@/app/lib/apiKeyStorage';
 
 import { Idea } from '@/types';
 
@@ -24,6 +26,7 @@ export default function HomePage() {
   const [userPrompt, setUserPrompt] = useState<string>('');
   const [generatedPlanId, setGeneratedPlanId] = useState<string | null>(null);
   const [showPlanCompleteModal, setShowPlanCompleteModal] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
 
   const handleStartTopicExploration = async (prompt: string) => {
     console.log('=== 주제 탐색 시작 ===');
@@ -46,7 +49,13 @@ export default function HomePage() {
   const handleDirectIdeaGeneration = async (prompt: string) => {
     console.log('=== 직접 아이디어 생성 시작 ===');
     console.log('사용자 프롬프트:', prompt);
-    
+
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      setError('API 키가 설정되지 않았습니다. 홈 화면에서 API 키를 입력해주세요.');
+      return;
+    }
+
     setCurrentStep('results');
     setIsGenerating(true);
     setError(null);
@@ -57,8 +66,9 @@ export default function HomePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          prompt: prompt
+        body: JSON.stringify({
+          prompt: prompt,
+          apiKey
         }),
       });
 
@@ -121,14 +131,20 @@ export default function HomePage() {
     setResearchData(null);
 
     try {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('API 키가 설정되지 않았습니다. 홈 화면에서 API 키를 입력해주세요.');
+      }
+
       const researchResponse = await fetch('/api/research', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           topic: context.finalTopic,
-          includeAcademic: true
+          includeAcademic: true,
+          apiKey
         }),
       });
 
@@ -184,6 +200,10 @@ export default function HomePage() {
     const researchDataToUse = withResearch ? researchData : null;
     
     try {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('API 키가 설정되지 않았습니다. 홈 화면에서 API 키를 입력해주세요.');
+      }
 
       // 아이디어 생성 (리서치 결과 포함)
       const response = await fetch('/api/ideas', {
@@ -191,12 +211,13 @@ export default function HomePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           originalPrompt: userPrompt,
           keywords: selectedKeywords,
           finalTopic: contextToUse.finalTopic || contextToUse.selectedPath?.join(' → ') || '',
           topicContext: contextToUse,
-          researchData: researchDataToUse // 리서치 결과 추가
+          researchData: researchDataToUse, // 리서치 결과 추가
+          apiKey
         }),
       });
 
@@ -558,7 +579,10 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-4 pb-8 sm:pb-16">
         {currentStep === 'input' && (
           <>
-            <IdeaGenerator 
+            <div className="max-w-2xl mx-auto mb-8 mt-6">
+              <ApiKeyInput onApiKeyChange={setHasApiKey} />
+            </div>
+            <IdeaGenerator
               onSearch={handleStartTopicExploration}
               isLoading={isGenerating}
               selectedKeywords={selectedKeywords}

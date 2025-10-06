@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import openai from '@/app/lib/openai';
+import OpenAI from 'openai';
 
 export async function POST(req: NextRequest) {
   try {
-    const { text } = await req.json();
+    const { text, apiKey } = await req.json();
 
     if (!text || typeof text !== 'string') {
       return NextResponse.json(
@@ -11,6 +11,15 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'API 키가 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
+    const openai = new OpenAI({ apiKey });
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",

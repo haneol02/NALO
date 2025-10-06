@@ -4,7 +4,7 @@ import { generateIdeas } from '@/app/lib/openai';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt }: { prompt?: string } = body;
+    const { prompt, apiKey }: { prompt?: string; apiKey?: string } = body;
 
     // 입력 검증
     if (!prompt || typeof prompt !== 'string') {
@@ -17,6 +17,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'API 키가 필요합니다. 홈 화면에서 API 키를 입력해주세요.',
+        },
+        { status: 401 }
+      );
+    }
+
     console.log('=== 직접 아이디어 생성 요청 ===');
     console.log('사용자 프롬프트:', prompt);
     console.log('========================');
@@ -24,6 +34,7 @@ export async function POST(request: NextRequest) {
     // 프롬프트를 바탕으로 AI 아이디어 및 키워드 생성
     const result = await generateIdeas({
       prompt,
+      apiKey,
     });
 
     // 결과 검증

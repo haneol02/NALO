@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { rootNode, context } = await request.json();
+    const { rootNode, context, apiKey } = await request.json();
 
     if (!rootNode || !context) {
       return NextResponse.json({
@@ -11,13 +11,11 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // OpenAI API 키 확인
-    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({
         success: false,
-        error: 'OpenAI API 키가 설정되지 않았습니다.'
-      }, { status: 500 });
+        error: 'API 키가 필요합니다. 홈 화면에서 API 키를 입력해주세요.'
+      }, { status: 401 });
     }
 
     // 주제 기반 지능적 구조 생성을 위한 프롬프트

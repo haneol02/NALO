@@ -10,17 +10,18 @@ export interface SimpleTopic {
 
 // AI를 사용하여 동적으로 주제 생성
 export async function generateTopicsFromKeywords(
-  keywords: string[], 
-  parentTopic?: string, 
+  keywords: string[],
+  apiKey: string,
+  parentTopic?: string,
   level: number = 1,
   additionalPrompt?: string,
   userPrompt?: string
 ): Promise<SimpleTopic[]> {
-  
+
   try {
     // GPT-4o-mini를 사용한 동적 주제 생성
     const { generateTopicExpansions } = await import('./openai');
-    const result = await generateTopicExpansions(keywords, parentTopic, level, additionalPrompt, userPrompt);
+    const result = await generateTopicExpansions(keywords, apiKey, parentTopic, level, additionalPrompt, userPrompt);
     
     if (result.success && result.topics.length > 0) {
       return result.topics;
@@ -100,22 +101,25 @@ export interface TopicHistory {
 export class TopicExplorer {
   private history: TopicHistory[] = [];
   private keywords: string[] = [];
-  
-  constructor(initialKeywords: string[]) {
+  private apiKey: string;
+
+  constructor(initialKeywords: string[], apiKey: string) {
     this.keywords = initialKeywords;
+    this.apiKey = apiKey;
   }
-  
+
   async getInitialTopics(): Promise<SimpleTopic[]> {
-    const topics = await generateTopicsFromKeywords(this.keywords, undefined, 1);
+    const topics = await generateTopicsFromKeywords(this.keywords, this.apiKey, undefined, 1);
     this.history = []; // 초기화
     return topics;
   }
-  
+
   async expandTopic(selectedTopic: SimpleTopic): Promise<SimpleTopic[]> {
     const nextLevel = this.history.length + 2; // 1단계 다음은 2단계
     const expandedTopics = await generateTopicsFromKeywords(
-      this.keywords, 
-      selectedTopic.title, 
+      this.keywords,
+      this.apiKey,
+      selectedTopic.title,
       nextLevel
     );
     

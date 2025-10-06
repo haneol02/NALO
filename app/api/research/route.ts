@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 // 검색 키워드 번역 및 확장 함수
-async function enhanceSearchKeywords(topic: string): Promise<{
+async function enhanceSearchKeywords(topic: string, apiKey: string): Promise<{
   english: string[],
   korean: string[],
   related: string[]
@@ -35,14 +30,26 @@ async function enhanceSearchKeywords(topic: string): Promise<{
 - related: ["webRTC", "video conferencing", "peer-to-peer communication", "streaming technology", "video calling software"]
 `;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens: 500,
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 500,
+      }),
     });
 
-    const content = response.choices[0]?.message?.content || '{}';
+    if (!response.ok) {
+      throw new Error(`OpenAI API 오류: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content || '{}';
     const keywords = JSON.parse(content);
     
     console.log('키워드 확장 결과:', keywords);
@@ -118,7 +125,7 @@ function isRelevantResult(result: any, originalTopic: string, searchKeyword: str
 
 export async function POST(req: NextRequest) {
   try {
-    const { topic, includeAcademic = true } = await req.json();
+    const { topic, includeAcademic = true, apiKey } = await req.json();
 
     if (!topic || typeof topic !== 'string') {
       return NextResponse.json(
@@ -127,10 +134,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!apiKey) {
+      return NextResponse.json(
+        { success: false, error: 'API 키가 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
     console.log(`=== 통합 리서치 시작: ${topic} ===`);
-    
+
     // 1단계: 검색 키워드 확장
-    const enhancedKeywords = await enhanceSearchKeywords(topic);
+    const enhancedKeywords = await enhanceSearchKeywords(topic, apiKey);
     console.log('확장된 검색 키워드:', enhancedKeywords);
 
     const results: any = {
@@ -291,7 +305,7 @@ export async function POST(req: NextRequest) {
     const analysis = await generateIntegratedAnalysis(topic, bestWikipediaData, bestOpenalexData, {
       wikipediaResults,
       openalexResults
-    });
+    }, apiKey);
     
     const response = {
       success: true,
@@ -334,19 +348,19 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function generateIntegratedAnalysis(topic: string, wikipediaData: any, openalexData: any, allResults: any) {
+async function generateIntegratedAnalysis(topic: string, wikipediaData: any, openalexData: any, allResults: any, apiKey: string) {
   try {
     // 모든 수집된 데이터 종합
     const allPapers = allResults.openalexResults?.flatMap((r: any) => r.data?.papers || []) || [];
     const allWikipediaData = allResults.wikipediaResults?.map((r: any) => r.data) || [];
-    
+
     // 논문 데이터에서 패턴 분석
     const paperAnalysis = analyzePapers(allPapers);
     const marketAnalysis = analyzeMarketTrends(paperAnalysis, allWikipediaData);
     const competitorAnalysis = analyzeCompetitors(allPapers, topic);
-    
+
     // GPT를 사용한 심층 분석 생성
-    const deepInsights = await generateDeepInsights(topic, paperAnalysis, marketAnalysis, competitorAnalysis);
+    const deepInsights = await generateDeepInsights(topic, paperAnalysis, marketAnalysis, competitorAnalysis, apiKey);
     
     return {
       topic,
@@ -499,7 +513,7 @@ function analyzeCompetitors(papers: any[], topic: string) {
   };
 }
 
-async function generateDeepInsights(topic: string, paperAnalysis: any, marketAnalysis: any, competitorAnalysis: any) {
+async function generateDeepInsights(topic: string, paperAnalysis: any, marketAnalysis: any, competitorAnalysis: any, apiKey: string) {
   const prompt = `
 다음 리서치 데이터를 바탕으로 "${topic}" 프로젝트에 대한 심층 분석을 제공해주세요:
 
@@ -536,14 +550,26 @@ async function generateDeepInsights(topic: string, paperAnalysis: any, marketAna
 `;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens: 1000,
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 1000,
+      }),
     });
 
-    const content = response.choices[0]?.message?.content || '{}';
+    if (!response.ok) {
+      throw new Error(`OpenAI API 오류: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content || '{}';
     return JSON.parse(content);
     
   } catch (error) {

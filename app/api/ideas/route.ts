@@ -63,13 +63,24 @@ export async function POST(request: NextRequest) {
 
     // 새로운 아이디어 생성 로직
     const { generateIdeas } = await import('@/app/lib/openai');
-    const { keywords = [], topicContext = null, finalTopic = '', originalPrompt = '', researchData = null }: { 
-      keywords?: string[], 
-      topicContext?: any, 
+    const { keywords = [], topicContext = null, finalTopic = '', originalPrompt = '', researchData = null, apiKey }: {
+      keywords?: string[],
+      topicContext?: any,
       finalTopic?: string,
       originalPrompt?: string,
-      researchData?: any
+      researchData?: any,
+      apiKey?: string
     } = body;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'API 키가 필요합니다. 홈 화면에서 API 키를 입력해주세요.',
+        },
+        { status: 401 }
+      );
+    }
 
     // 입력 검증
     if ((keywords.length === 0 && !finalTopic) && !originalPrompt) {
@@ -161,6 +172,7 @@ ${contextParts.map(part => `- ${part}`).join('\n')}
       finalTopic,
       topicContext,
       ideaCount,
+      apiKey,
     });
 
     // 결과 검증

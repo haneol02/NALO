@@ -1,9 +1,16 @@
 import OpenAI from 'openai';
 import { SIMPLE_IDEA_PROMPT, DETAILED_PROJECT_PROMPT, IDEA_PLAN_PROMPT, createDetailedPrompt, createIdeaPlanPrompt } from './project-templates';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// API 키로 OpenAI 인스턴스를 생성하는 헬퍼 함수
+function createOpenAIInstance(apiKey: string) {
+  if (!apiKey) {
+    throw new Error('API 키가 필요합니다.');
+  }
+  return new OpenAI({
+    apiKey,
+    dangerouslyAllowBrowser: true // 클라이언트에서 직접 호출하지 않지만, 서버에서 사용자 API 키 사용
+  });
+}
 
 interface GenerateIdeasParams {
   keywords?: string[];
@@ -11,6 +18,7 @@ interface GenerateIdeasParams {
   topicContext?: any;
   prompt?: string;
   ideaCount?: number;
+  apiKey: string;
 }
 
 // 메모리 기반 토큰 사용량 추적
@@ -26,7 +34,9 @@ function checkAndResetDailyUsage() {
 }
 
 export async function generateIdeas(params: GenerateIdeasParams) {
-  const { keywords = [], finalTopic = '', topicContext = null, prompt = '', ideaCount = 3 } = params;
+  const { keywords = [], finalTopic = '', topicContext = null, prompt = '', ideaCount = 3, apiKey } = params;
+
+  const openai = createOpenAIInstance(apiKey);
   
   // 토큰 사용량 체크 (메모리 기반)
   checkAndResetDailyUsage();
@@ -417,7 +427,9 @@ function validateIdeaPlanResponse(parsed: any): boolean {
 }
 
 // OpenAI API 테스트 함수
-export async function testOpenAIConnection(): Promise<{ success: boolean; message: string; tokensUsed?: number }> {
+export async function testOpenAIConnection(apiKey: string): Promise<{ success: boolean; message: string; tokensUsed?: number }> {
+  const openai = createOpenAIInstance(apiKey);
+
   try {
     const testPrompt = `다음 JSON 형식으로 간단한 테스트 응답을 해주세요:
 {
@@ -494,11 +506,13 @@ function parseAlternativeFormat(content: string, tokensUsed: number) {
   throw new Error(`AI 응답을 파싱하는데 실패했습니다. 응답 내용을 확인해주세요: ${content.substring(0, 200)}...`);
 }
 
-export async function generateDetails(idea: any) {
+export async function generateDetails(idea: any, apiKey: string) {
+  const openai = createOpenAIInstance(apiKey);
+
   // 토큰 사용량 체크 (메모리 기반)
   checkAndResetDailyUsage();
   const maxDailyTokens = 2000000; // 200만 토큰
-  
+
   if (dailyTokenUsage >= maxDailyTokens) {
     throw new Error('일일 토큰 사용량을 초과했습니다. 내일 다시 시도해주세요.');
   }
@@ -603,11 +617,13 @@ export async function generateDetails(idea: any) {
   }
 }
 
-export async function generateIdeaPlan(idea: any, researchData?: any) {
+export async function generateIdeaPlan(idea: any, apiKey: string, researchData?: any) {
+  const openai = createOpenAIInstance(apiKey);
+
   // 토큰 사용량 체크 (메모리 기반)
   checkAndResetDailyUsage();
   const maxDailyTokens = 2000000; // 200만 토큰
-  
+
   if (dailyTokenUsage >= maxDailyTokens) {
     throw new Error('일일 토큰 사용량을 초과했습니다. 내일 다시 시도해주세요.');
   }
@@ -713,16 +729,19 @@ export async function generateIdeaPlan(idea: any, researchData?: any) {
 
 // 주제 확장 생성 함수
 export async function generateTopicExpansions(
-  keywords: string[], 
-  parentTopic?: string, 
+  keywords: string[],
+  apiKey: string,
+  parentTopic?: string,
   level: number = 1,
   additionalPrompt?: string,
   userPrompt?: string
 ): Promise<{ success: boolean; topics: any[]; tokensUsed: number }> {
+  const openai = createOpenAIInstance(apiKey);
+
   // 토큰 사용량 체크
   checkAndResetDailyUsage();
   const maxDailyTokens = 2000000;
-  
+
   if (dailyTokenUsage >= maxDailyTokens) {
     throw new Error('일일 토큰 사용량을 초과했습니다. 내일 다시 시도해주세요.');
   }
@@ -1019,15 +1038,18 @@ function generateFallbackTopics(
 
 // 마인드맵 기반 기획서 생성
 export async function generateMindmapPlan(
-  mindmapData: { nodes: any[]; edges: any[] }, 
-  originalPrompt?: string, 
-  focusNode?: any, 
+  mindmapData: { nodes: any[]; edges: any[] },
+  apiKey: string,
+  originalPrompt?: string,
+  focusNode?: any,
   isFocusedGeneration?: boolean
 ) {
+  const openai = createOpenAIInstance(apiKey);
+
   // 토큰 사용량 체크
   checkAndResetDailyUsage();
   const maxDailyTokens = 2000000;
-  
+
   if (dailyTokenUsage >= maxDailyTokens) {
     throw new Error('일일 토큰 사용량을 초과했습니다. 내일 다시 시도해주세요.');
   }
@@ -1466,4 +1488,4 @@ function extractKeywordsFromMindmap(mindmapData: { nodes: any[]; edges: any[] })
   return Array.from(new Set(keywords)); // 중복 제거
 }
 
-export default openai;
+// default export 제거 - OpenAI 인스턴스는 이제 동적으로 생성됩니다
