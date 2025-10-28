@@ -147,7 +147,7 @@ ${topicContextString}${additionalContext}
       messages: [
         {
           role: "system",
-          content: "당신은 한국 시장에 특화된 실용적인 프로젝트 아이디어 생성 전문가입니다. 항상 JSON 형식으로 응답하며, 실제 구현 가능한 아이디어만 제안합니다."
+          content: "당신은 한국 시장에 특화된 실용적인 프로젝트 아이디어 생성 전문가입니다. 반드시 유효한 JSON 형식으로만 응답하며, 실제 구현 가능한 아이디어만 제안합니다."
         },
         {
           role: "user",
@@ -156,6 +156,7 @@ ${topicContextString}${additionalContext}
       ],
       max_tokens: 2000,
       temperature: 1.1, // 더 높은 창의성으로 중복 방지
+      response_format: { type: "json_object" }
     });
 
     const content = response.choices[0]?.message?.content;
@@ -217,72 +218,44 @@ ${topicContextString}${additionalContext}
 // 강화된 JSON 정리 및 파싱 함수
 function cleanAndParseJson(content: string): { content: string; isValid: boolean } {
   let cleanContent = content.trim();
-  
+
   console.log('원본 응답 길이:', cleanContent.length);
   console.log('원본 응답 시작:', cleanContent.substring(0, 100));
-  
-  // 1. 마크다운 코드 블록 제거 (여러 패턴 지원)
-  const codeBlockPatterns = [
-    /^```json\s*/,
-    /^```\s*/,
-    /```\s*$/g
-  ];
-  
-  codeBlockPatterns.forEach(pattern => {
-    cleanContent = cleanContent.replace(pattern, '');
-  });
-  
-  // 2. 앞뒤 불필요한 텍스트 제거
-  cleanContent = cleanContent.trim();
-  
-  // 3. JSON 객체 영역 추출 (더 정확한 매칭)
-  const jsonMatches = [
-    // 가장 바깥쪽 {}를 찾는 여러 시도
-    /\{[\s\S]*\}/,
-    /\{.*"ideas"[\s\S]*\}/,
-    /\{.*?\}/g
-  ];
-  
-  let bestMatch = '';
-  let maxLength = 0;
-  
-  jsonMatches.forEach(pattern => {
-    const matches = cleanContent.match(pattern);
-    if (matches) {
-      const match = Array.isArray(matches) ? matches[0] : matches;
-      if (match.length > maxLength) {
-        bestMatch = match;
-        maxLength = match.length;
-      }
-    }
-  });
-  
-  if (bestMatch) {
-    cleanContent = bestMatch;
-  }
-  
-  // 4. 일반적인 JSON 오류 수정
+
+  // 1. 마크다운 코드 블록 제거
   cleanContent = cleanContent
-    .replace(/,(\s*[}\]])/g, '$1')  // 마지막 쉼표 제거
-    .replace(/([{,]\s*)"?(\w+)"?\s*:/g, '$1"$2":')  // 키를 따옴표로 감싸기
-    .replace(/:\s*([^",{[\]}\s]+)(?=\s*[,}])/g, ':"$1"')  // 값을 따옴표로 감싸기 (문자열인 경우)
-    .replace(/:\s*"(\d+)"/g, ':$1')  // 숫자는 따옴표 제거
-    .replace(/:\s*"(true|false)"/g, ':$1')  // 불린은 따옴표 제거
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/, '')
+    .replace(/```\s*$/, '');
+
+  // 2. 앞뒤 공백 제거
+  cleanContent = cleanContent.trim();
+
+  // 3. JSON 객체 영역만 추출 (첫 번째 { 부터 마지막 } 까지)
+  const firstBrace = cleanContent.indexOf('{');
+  const lastBrace = cleanContent.lastIndexOf('}');
+
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleanContent = cleanContent.substring(firstBrace, lastBrace + 1);
+  }
+
+  // 4. 기본적인 정리만 수행 (최소한의 처리)
+  cleanContent = cleanContent
     .replace(/[\u201C\u201D]/g, '"')  // 스마트 따옴표를 일반 따옴표로 변경
     .replace(/[\u2018\u2019]/g, "'")  // 스마트 작은따옴표를 일반 작은따옴표로 변경
-    .replace(/\n|\r/g, ' ')  // 줄바꿈을 공백으로 변경
-    .replace(/\s+/g, ' ')  // 연속된 공백을 하나로 변경
+    .replace(/,(\s*[}\]])/g, '$1')  // 마지막 쉼표 제거
     .trim();
-  
+
   // 5. JSON 유효성 사전 체크
   let isValid = false;
   try {
     JSON.parse(cleanContent);
     isValid = true;
+    console.log('JSON 사전 체크 성공');
   } catch (e) {
     console.warn('JSON 사전 체크 실패:', e);
   }
-  
+
   return { content: cleanContent, isValid };
 }
 
