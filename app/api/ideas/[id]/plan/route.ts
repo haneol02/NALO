@@ -5,8 +5,8 @@ import { createClient } from '@/app/lib/supabase/server';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { idea } = await request.json();
-    
+    const { idea, apiKey } = await request.json();
+
     if (!idea) {
       return NextResponse.json(
         {
@@ -14,6 +14,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           error: '아이디어 정보가 필요합니다.',
         },
         { status: 400 }
+      );
+    }
+
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'API 키가 필요합니다.',
+        },
+        { status: 401 }
       );
     }
 
@@ -26,9 +36,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     console.log('아이디어 내용:', idea);
     console.log('리서치 데이터 포함:', !!idea.researchData);
     console.log('=======================================');
-    
+
     // 선택된 아이디어에 대해서만 기획서 생성 (리서치 데이터 포함)
-    const planResult = await generateIdeaPlan(idea, idea.researchData);
+    const planResult = await generateIdeaPlan(idea, apiKey, idea.researchData);
     
     if (!planResult.ideaPlan) {
       throw new Error('기획서 생성에 실패했습니다.');

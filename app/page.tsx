@@ -289,20 +289,26 @@ export default function HomePage() {
     setError(null);
 
     try {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('API 키가 설정되지 않았습니다. 홈 화면에서 API 키를 입력해주세요.');
+      }
+
       // 새로운 마인드맵 전용 API 호출
       const response = await fetch('/api/mindmap/to-plan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           mindmapData: {
             nodes: mindmapData.nodes,
             edges: mindmapData.edges
           },
           originalPrompt: userPrompt,
           focusNode: mindmapData.focusNode,
-          isFocusedGeneration: isFocusedGeneration
+          isFocusedGeneration: isFocusedGeneration,
+          apiKey
         }),
       });
 
@@ -605,11 +611,12 @@ export default function HomePage() {
 
         {currentStep === 'topics' && (
           <>
-            <SimpleTopicExplorer 
+            <SimpleTopicExplorer
               initialKeywords={selectedKeywords}
               onFinalSelection={handleTopicSelected}
               userPrompt={userPrompt}
               isGeneratingIdeas={isGenerating}
+              apiKey={getApiKey() || undefined}
             />
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mt-6 max-w-4xl mx-auto shadow-sm">

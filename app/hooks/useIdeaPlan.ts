@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { getApiKey } from '@/app/lib/apiKeyStorage';
 
 import { Idea } from '@/types';
 
@@ -49,16 +50,22 @@ export function useIdeaPlan() {
       target: idea.target || null
     };
 
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      setError('API 키가 설정되지 않았습니다. 홈 화면에서 API 키를 입력해주세요.');
+      return null;
+    }
+
     setGeneratingPlanId(idea.id);
     setError(null);
-    
+
     try {
       const response = await fetch(`/api/ideas/${idea.id}/plan`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json' 
+        headers: {
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ idea: processedIdea })
+        body: JSON.stringify({ idea: processedIdea, apiKey })
       });
 
       if (!response.ok) {

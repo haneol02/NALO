@@ -20,13 +20,15 @@ interface SimpleTopicExplorerProps {
   onFinalSelection: (context: any, withResearch?: boolean) => void;
   userPrompt?: string;
   isGeneratingIdeas?: boolean; // 아이디어 생성 중 상태
+  apiKey?: string; // API 키 추가
 }
 
-export default function SimpleTopicExplorer({ 
-  initialKeywords, 
+export default function SimpleTopicExplorer({
+  initialKeywords,
   onFinalSelection,
   userPrompt = '',
-  isGeneratingIdeas = false
+  isGeneratingIdeas = false,
+  apiKey
 }: SimpleTopicExplorerProps) {
   const [currentTopics, setCurrentTopics] = useState<SimpleTopic[]>([]);
   const [selectedPath, setSelectedPath] = useState<string[]>([]);
@@ -65,7 +67,8 @@ export default function SimpleTopicExplorer({
           body: JSON.stringify({
             prompt: userPrompt || '',
             keywords: initialKeywords,
-            level: 1
+            level: 1,
+            apiKey
           }),
         });
 
@@ -159,9 +162,10 @@ export default function SimpleTopicExplorer({
         keywords: initialKeywords,
         parentTopic: topic.title,
         level: topic.level + 1,
-        additionalPrompt: additionalPrompt?.trim() || undefined
+        additionalPrompt: additionalPrompt?.trim() || undefined,
+        apiKey
       };
-      
+
       const response = await fetch('/api/topics', {
         method: 'POST',
         headers: {

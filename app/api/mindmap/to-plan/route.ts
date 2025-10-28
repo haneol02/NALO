@@ -5,8 +5,8 @@ import { createClient } from '@/app/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { mindmapData, originalPrompt, focusNode, isFocusedGeneration } = await request.json();
-    
+    const { mindmapData, originalPrompt, focusNode, isFocusedGeneration, apiKey } = await request.json();
+
     if (!mindmapData || !mindmapData.nodes || !mindmapData.edges) {
       return NextResponse.json(
         {
@@ -14,6 +14,16 @@ export async function POST(request: NextRequest) {
           error: '마인드맵 데이터가 필요합니다.',
         },
         { status: 400 }
+      );
+    }
+
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'API 키가 필요합니다. 홈 화면에서 API 키를 입력해주세요.',
+        },
+        { status: 401 }
       );
     }
 
@@ -28,9 +38,9 @@ export async function POST(request: NextRequest) {
     console.log('포커스 노드:', focusNode ? focusNode.data.label : '전체 마인드맵');
     console.log('부분 생성:', isFocusedGeneration ? 'YES' : 'NO');
     console.log('======================================');
-    
+
     // 마인드맵 데이터를 기획서로 변환 (포커스 정보 포함)
-    const planResult = await generateMindmapPlan(mindmapData, originalPrompt, focusNode, isFocusedGeneration);
+    const planResult = await generateMindmapPlan(mindmapData, apiKey, originalPrompt, focusNode, isFocusedGeneration);
     
     if (!planResult.ideaPlan) {
       throw new Error('기획서 생성에 실패했습니다.');
