@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Lightbulb, Play, Search, Home } from 'lucide-react';
+import ResearchOptionModal, { ResearchOptions } from './ResearchOptionModal';
 
 interface SimpleTopic {
   id: string;
@@ -40,6 +41,10 @@ export default function SimpleTopicExplorer({
   const [hasLoadedTopics, setHasLoadedTopics] = useState<boolean>(false);
   const loadingRef = useRef<boolean>(false);
   const mountedRef = useRef<boolean>(false);
+
+  // 리서치 옵션 모달 상태
+  const [showResearchModal, setShowResearchModal] = useState(false);
+  const [selectedTopicForResearch, setSelectedTopicForResearch] = useState<SimpleTopic | null>(null);
 
 
   // 컴포넌트 마운트 시에만 실행
@@ -113,15 +118,15 @@ export default function SimpleTopicExplorer({
     console.log('currentTopics 상태 업데이트:', currentTopics);
   }, [currentTopics]);
 
-  const handleDirectIdeaGeneration = (topic: SimpleTopic, withResearch: boolean = false) => {
+  const handleDirectIdeaGeneration = (topic: SimpleTopic, researchOptions?: ResearchOptions) => {
     // 이미 로딩 중이면 중복 실행 방지
     if (isLoading || isGeneratingIdeas) {
       console.log('이미 아이디어 생성 중이므로 중복 실행 방지');
       return;
     }
-    
+
     const newPath = [...selectedPath, topic.title];
-    
+
     // Enhanced context generation as per improvement plan
     const enhancedContext = {
       // 기존 정보
@@ -129,26 +134,45 @@ export default function SimpleTopicExplorer({
       selectedPath: newPath,
       finalTopic: topic.title,
       category: topic.category,
-      
+
       // 추가 컨텍스트 정보
       topicHierarchy: {
         baseTopics: currentTopics.filter(t => !t.parentId).map(t => t.title),
         selectedTopicLevel: topic.level,
-        parentTopic: topic.parentId ? 
+        parentTopic: topic.parentId ?
           currentTopics.find(t => t.id === topic.parentId)?.title : null,
         childTopics: currentTopics.filter(t => t.parentId === topic.id).map(t => t.title)
       },
-      
+
       // 탐색 메타데이터
       explorationMetadata: {
         totalTopicsExplored: currentTopics.length,
         expansionCount: currentTopics.filter(t => t.parentId).length,
         additionalKeywords: additionalKeywords.split(',').map(k => k.trim()).filter(k => k),
         userInteractionPattern: getUserInteractionPattern() // 사용자 탐색 패턴 분석
-      }
+      },
+
+      // 리서치 옵션 추가
+      researchOptions
     };
-    
+
+    // 리서치 옵션이 있으면 withResearch를 true로 전달
+    const withResearch = researchOptions ?
+      (researchOptions.includeWikipedia || researchOptions.includeAcademic || researchOptions.includePerplexity) :
+      false;
+
     onFinalSelection(enhancedContext, withResearch);
+  };
+
+  const handleOpenResearchModal = (topic: SimpleTopic) => {
+    setSelectedTopicForResearch(topic);
+    setShowResearchModal(true);
+  };
+
+  const handleResearchOptionsConfirm = (options: ResearchOptions) => {
+    if (selectedTopicForResearch) {
+      handleDirectIdeaGeneration(selectedTopicForResearch, options);
+    }
   };
 
   const handleTopicExpansion = async (topic: SimpleTopic, customKeywords?: string) => {
@@ -247,7 +271,7 @@ export default function SimpleTopicExplorer({
           {/* 베이스 주제 */}
           <TopicCard
             topic={baseTopic}
-            onDirectGenerate={(withResearch) => handleDirectIdeaGeneration(baseTopic, withResearch)}
+            onOpenResearchModal={() => handleOpenResearchModal(baseTopic)}
             onExpand={(keywords) => {
               handleTopicExpansion(baseTopic, keywords);
             }}
@@ -276,7 +300,7 @@ export default function SimpleTopicExplorer({
                 <TopicCard
                   key={childTopic.id}
                   topic={childTopic}
-                  onDirectGenerate={(withResearch) => handleDirectIdeaGeneration(childTopic, withResearch)}
+                  onOpenResearchModal={() => handleOpenResearchModal(childTopic)}
                   onExpand={(keywords) => {
                     handleTopicExpansion(childTopic, keywords);
                   }}
@@ -382,6 +406,14 @@ export default function SimpleTopicExplorer({
           </button>
         </div>
       </div>
+
+      {/* 리서치 옵션 모달 */}
+      <ResearchOptionModal
+        isOpen={showResearchModal}
+        onClose={() => setShowResearchModal(false)}
+        onConfirm={handleResearchOptionsConfirm}
+        topicTitle={selectedTopicForResearch?.title || ''}
+      />
     </div>
   );
 }
@@ -389,13 +421,13 @@ export default function SimpleTopicExplorer({
 // 주제 카드 컴포넌트
 interface TopicCardProps {
   topic: SimpleTopic;
-  onDirectGenerate: (withResearch?: boolean) => void;
+  onOpenResearchModal: () => void;
   onExpand: (keywords?: string) => void;
   isExpanding: boolean;
   allTopics: SimpleTopic[];
 }
 
-function TopicCard({ topic, onDirectGenerate, onExpand, isExpanding, allTopics }: TopicCardProps) {
+function TopicCard({ topic, onOpenResearchModal, onExpand, isExpanding, allTopics }: TopicCardProps) {
   const [showKeywordInput, setShowKeywordInput] = useState(false);
   const [expandKeywords, setExpandKeywords] = useState('');
   
@@ -477,7 +509,7 @@ function TopicCard({ topic, onDirectGenerate, onExpand, isExpanding, allTopics }
               
               <div className="flex flex-wrap gap-2 justify-end sm:justify-start">
                 <button
-                  onClick={() => onDirectGenerate(true)} // 리서치 포함 생성
+                  onClick={onOpenResearchModal}
                   disabled={isExpanding}
                   className="btn-primary btn-click px-3 sm:px-4 py-2 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

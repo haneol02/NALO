@@ -9,7 +9,7 @@ import MindmapViewer from './components/MindmapViewer';
 import AuthButton from './components/AuthButton';
 import ApiKeyInput from './components/ApiKeyInput';
 import { AlertTriangle, Frown, Search } from 'lucide-react';
-import { getApiKey } from '@/app/lib/apiKeyStorage';
+import { getApiKey, getPerplexityApiKey } from '@/app/lib/apiKeyStorage';
 
 import { Idea } from '@/types';
 
@@ -27,6 +27,16 @@ export default function HomePage() {
   const [generatedPlanId, setGeneratedPlanId] = useState<string | null>(null);
   const [showPlanCompleteModal, setShowPlanCompleteModal] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [showApiSettings, setShowApiSettings] = useState(false); // 기본값 false로 변경
+  const [currentResearchMessage, setCurrentResearchMessage] = useState<string>('리서치 중...');
+
+  // API 키가 있는지 확인하여 초기 표시 여부 결정
+  useEffect(() => {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      setShowApiSettings(true); // API 키가 없으면 설정창 표시
+    }
+  }, []);
 
   const handleStartTopicExploration = async (prompt: string) => {
     console.log('=== 주제 탐색 시작 ===');
@@ -111,9 +121,10 @@ export default function HomePage() {
     console.log('=== 최종 주제 선택됨 ===');
     console.log('선택된 컨텍스트:', context);
     console.log('리서치 포함 여부:', withResearch);
-    
+    console.log('리서치 옵션:', context.researchOptions);
+
     setTopicContext(context);
-    
+
     if (withResearch) {
       // 리서치 단계로 이동
       handleStartResearch(context);
@@ -129,6 +140,7 @@ export default function HomePage() {
     setIsResearching(true);
     setError(null);
     setResearchData(null);
+    setResearchLogs([]);
 
     try {
       const apiKey = getApiKey();
@@ -136,6 +148,42 @@ export default function HomePage() {
         throw new Error('API 키가 설정되지 않았습니다. 홈 화면에서 API 키를 입력해주세요.');
       }
 
+      // 리서치 옵션 준비
+      const researchOptions = context.researchOptions || {
+        includeWikipedia: true,
+        includeAcademic: true,
+        includePerplexity: false
+      };
+
+      // 랜덤 리서치 메시지 배열
+      const researchMessages = [
+        '📊 주제를 분석하고 있어요...',
+        '🔍 최적의 키워드를 찾고 있어요...',
+        '📚 Wikipedia에서 정보를 수집 중이에요...',
+        '📄 최신 논문을 검색하고 있어요...',
+        '🌐 웹에서 관련 정보를 찾고 있어요...',
+        '🧠 AI가 데이터를 분석 중이에요...',
+        '✨ 인사이트를 도출하고 있어요...',
+        '🎯 핵심 정보를 정리하고 있어요...',
+        '⚡ 거의 다 됐어요...',
+        '🚀 마무리 작업 중이에요...'
+      ];
+
+      // 랜덤 메시지 표시 인터벌
+      const messageInterval = setInterval(() => {
+        const randomMessage = researchMessages[Math.floor(Math.random() * researchMessages.length)];
+        setCurrentResearchMessage(randomMessage);
+      }, 2000); // 2초마다 메시지 변경
+
+      // Perplexity API 키 추가
+      if (researchOptions.includePerplexity) {
+        const perplexityApiKey = getPerplexityApiKey();
+        if (perplexityApiKey) {
+          researchOptions.perplexityApiKey = perplexityApiKey;
+        }
+      }
+
+      // API 호출 시작
       const researchResponse = await fetch('/api/research', {
         method: 'POST',
         headers: {
@@ -143,25 +191,31 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           topic: context.finalTopic,
-          includeAcademic: true,
-          apiKey
+          includeAcademic: researchOptions.includeAcademic,
+          apiKey,
+          researchOptions
         }),
       });
+
+      // 인터벌 정리
+      clearInterval(messageInterval);
 
       if (!researchResponse.ok) {
         throw new Error('리서치 API 호출에 실패했습니다.');
       }
 
       const researchResult = await researchResponse.json();
-      
+
       if (researchResult.success) {
+        setCurrentResearchMessage('✅ 리서치 완료!');
         setResearchData(researchResult.data);
-        console.log('리서치 완료:', researchResult.data.summary);
       } else {
         throw new Error(researchResult.error || '리서치에 실패했습니다.');
       }
     } catch (error) {
       console.error('리서치 오류:', error);
+      clearInterval(messageInterval);
+      setCurrentResearchMessage('❌ 리서치 중 오류 발생');
       setError(error instanceof Error ? error.message : '리서치 중 오류가 발생했습니다.');
     } finally {
       setIsResearching(false);
@@ -425,11 +479,11 @@ export default function HomePage() {
                 </h1>
                 <div className="mb-2"></div>
                 <p className="text-sm min-[375px]:text-base min-[425px]:text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl text-slate-700 mb-2 sm:mb-3 font-bold tracking-tight">
-                  날로 먹는 프로젝트 기획
+                  날로 먹는 아이디어 기획
                 </p>
                 <div className="max-w-2xl mx-auto">
                   <p className="text-xs min-[375px]:text-sm min-[425px]:text-base sm:text-lg text-slate-600 leading-relaxed text-center px-4">
-                    AI가 도와주는 스마트한 프로젝트 기획 솔루션
+                    AI 리서치와 마인드맵으로 아이디어를 구체화하세요
                   </p>
                   <div className="flex items-center justify-center gap-1 min-[375px]:gap-2 sm:gap-3 mt-4 text-[9px] min-[375px]:text-[10px] sm:text-sm text-slate-500 px-4 flex-wrap">
                     <div className="flex items-center gap-1">
@@ -455,18 +509,18 @@ export default function HomePage() {
           // 컴팩트 헤더 (한 줄 레이아웃)
           <div className="relative max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <a href="/" className="flex items-center gap-4 hover:opacity-80 transition-opacity cursor-pointer">
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight">
                   <span className="gradient-text">NALO</span>
                 </h1>
                 <div className="hidden sm:block w-px h-6 bg-slate-300"></div>
                 <p className="hidden sm:block text-sm text-slate-600 font-medium">
-                  날로 먹는 프로젝트 기획
+                  날로 먹는 아이디어 기획
                 </p>
-              </div>
+              </a>
               <div className="flex items-center gap-3">
                 <p className="hidden md:block text-xs text-slate-500">
-                  AI가 도와주는 스마트한 프로젝트 기획 솔루션
+                  AI 리서치 & 마인드맵
                 </p>
                 <AuthButton />
               </div>
@@ -586,7 +640,24 @@ export default function HomePage() {
         {currentStep === 'input' && (
           <>
             <div className="max-w-2xl mx-auto mb-8 mt-6">
-              <ApiKeyInput onApiKeyChange={setHasApiKey} />
+              {showApiSettings ? (
+                <div className="space-y-3">
+                  <ApiKeyInput onApiKeyChange={setHasApiKey} />
+                  <button
+                    onClick={() => setShowApiSettings(false)}
+                    className="text-sm text-slate-500 hover:text-slate-700 mx-auto block"
+                  >
+                    API 설정 숨기기
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowApiSettings(true)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm mx-auto block transition-colors"
+                >
+                  API 설정 보기
+                </button>
+              )}
             </div>
             <IdeaGenerator
               onSearch={handleStartTopicExploration}
@@ -664,10 +735,13 @@ export default function HomePage() {
                   <h3 className="text-lg min-[375px]:text-xl font-semibold text-slate-700 mb-2 text-center loading-pulse">
                     시장 리서치를 수행하고 있습니다
                   </h3>
-                  <div className="mb-2"></div>
-                  <p className="text-xs min-[375px]:text-sm sm:text-base text-slate-500 text-center">
-                    Wikipedia와 학술 논문 데이터를 분석 중입니다...
-                  </p>
+
+                  {/* 실시간 로그 */}
+                  <div className="mt-6 max-w-2xl mx-auto">
+                    <div className="text-base text-slate-700 text-center font-medium animate-pulse">
+                      {currentResearchMessage}
+                    </div>
+                  </div>
                   
                   {/* 진행 단계 표시 */}
                   <div className="flex justify-center items-center gap-2 mt-6">
@@ -693,6 +767,7 @@ export default function HomePage() {
                 onGenerateIdeas={handleGenerateWithResearch}
                 onNewSearch={handleNewSearch}
                 isGenerating={isGenerating}
+                researchOptions={topicContext?.researchOptions}
               />
             ) : null}
             

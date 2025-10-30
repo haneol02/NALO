@@ -620,7 +620,9 @@ ${plan.roi_prediction || '데이터 없음'}
         {/* 헤더 바 */}
         <header className="bg-white border-b border-slate-200 px-4 py-4">
           <div className="max-w-4xl mx-auto flex items-center justify-center">
-            <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+            <a href="/" className="hover:opacity-80 transition-opacity cursor-pointer">
+              <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+            </a>
           </div>
         </header>
 
@@ -642,7 +644,9 @@ ${plan.roi_prediction || '데이터 없음'}
         {/* 헤더 바 */}
         <header className="bg-white border-b border-slate-200 px-4 py-4">
           <div className="max-w-4xl mx-auto flex items-center justify-center">
-            <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+            <a href="/" className="hover:opacity-80 transition-opacity cursor-pointer">
+              <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+            </a>
           </div>
         </header>
 

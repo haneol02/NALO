@@ -8,20 +8,20 @@ import AutoRecovery from './components/AutoRecovery';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "NALO(날로) - 날로 먹는 프로젝트 기획",
-  description: "AI가 도와주는 스마트한 프로젝트 기획 솔루션. 완전 무료로 당신만의 창업 아이디어를 만나보세요.",
-  keywords: "프로젝트 아이디어, 창업 아이디어, 사이드프로젝트, AI 기획, 스마트 기획, 무료 서비스",
+  title: "NALO(날로) - 날로 먹는 아이디어 기획",
+  description: "AI 리서치와 마인드맵으로 아이디어를 구체화하는 플랫폼. 완전 무료로 당신의 프로젝트를 시작하세요.",
+  keywords: "아이디어 리서치, 마인드맵, 브레인스토밍, AI 기획, 주제 탐색, 프로젝트 아이디어, 창업 아이디어, 무료 서비스",
   authors: [{ name: "NALO Team" }],
   openGraph: {
-    title: "NALO(날로) - 날로 먹는 프로젝트 기획",
-    description: "AI가 도와주는 스마트한 프로젝트 기획 솔루션",
+    title: "NALO(날로) - 날로 먹는 아이디어 기획",
+    description: "AI 리서치와 마인드맵으로 아이디어를 구체화하는 플랫폼",
     type: "website",
     locale: "ko_KR",
   },
   twitter: {
     card: "summary_large_image",
-    title: "NALO(날로) - 날로 먹는 프로젝트 기획",
-    description: "AI가 도와주는 스마트한 프로젝트 기획 솔루션",
+    title: "NALO(날로) - 날로 먹는 아이디어 기획",
+    description: "AI 리서치와 마인드맵으로 아이디어를 구체화하는 플랫폼",
   },
   robots: {
     index: true,

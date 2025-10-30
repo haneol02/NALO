@@ -297,7 +297,7 @@ function isRelevantResult(result: any, originalTopic: string, searchKeyword: str
 
 export async function POST(req: NextRequest) {
   try {
-    const { topic, includeAcademic = true, apiKey } = await req.json();
+    const { topic, includeAcademic = true, apiKey, researchOptions } = await req.json();
 
     if (!topic || typeof topic !== 'string') {
       return NextResponse.json(
@@ -335,93 +335,144 @@ export async function POST(req: NextRequest) {
 
     // 3단계: 다중 검색 수행
     console.log('3단계: 검색 시작...');
+    console.log('리서치 옵션:', researchOptions);
 
     const promises: Promise<any>[] = [];
 
+    // 리서치 옵션에 따라 검색 수행
+    const includeWikipedia = researchOptions?.includeWikipedia !== false;
+    const includeOpenAlex = researchOptions?.includeAcademic !== false && includeAcademic;
+    const includePerplexity = researchOptions?.includePerplexity === true;
+
     // Wikipedia 검색 키워드 선택 (주제와 가장 관련 높은 것)
-    const wikipediaKeywords = [
-      ...enhancedKeywords.english.slice(0, 3),     // 영어 키워드 3개
-      ...enhancedKeywords.related.slice(0, 3),     // 관련 키워드 3개
-      ...(enhancedKeywords.synonyms?.slice(0, 2) || []),  // 동의어 2개
-      ...(enhancedKeywords.technical?.slice(0, 2) || [])  // 기술 용어 2개
-    ];
-
-    console.log(`📚 Wikipedia 검색 키워드 (${wikipediaKeywords.length}개):`, wikipediaKeywords);
-    
-    wikipediaKeywords.forEach((keyword, index) => {
-      promises.push(
-        fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/research/wikipedia`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            topic: keyword, 
-            language: enhancedKeywords.english.includes(keyword) ? 'en' : 'ko' 
-          }),
-        })
-        .then(res => res.json())
-        .then(data => ({ 
-          source: `wikipedia_${index}`, 
-          keyword,
-          data 
-        }))
-        .catch(error => ({ 
-          source: `wikipedia_${index}`, 
-          keyword,
-          error: error.message 
-        }))
-      );
-    });
-
-    // OpenAlex 다중 검색 (더 많은 영어 키워드 사용)
-    let academicKeywords: string[] = [];
-    if (includeAcademic) {
-      academicKeywords = [
-        ...enhancedKeywords.english.slice(0, 4),     // 영어 키워드 4개
+    let wikipediaKeywords: string[] = [];
+    if (includeWikipedia) {
+      wikipediaKeywords = [
+        ...enhancedKeywords.english.slice(0, 3),     // 영어 키워드 3개
         ...enhancedKeywords.related.slice(0, 3),     // 관련 키워드 3개
         ...(enhancedKeywords.synonyms?.slice(0, 2) || []),  // 동의어 2개
         ...(enhancedKeywords.technical?.slice(0, 2) || [])  // 기술 용어 2개
       ];
 
-      console.log(`📄 OpenAlex 검색 키워드 (${academicKeywords.length}개):`, academicKeywords);
-
-      academicKeywords.forEach((keyword, index) => {
+      console.log(`📚 Wikipedia 검색 키워드 (${wikipediaKeywords.length}개):`, wikipediaKeywords);
+    
+      wikipediaKeywords.forEach((keyword, index) => {
         promises.push(
-          fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/research/openalex`, {
+          fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/research/wikipedia`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ topic: keyword, limit: 3 }),
+            body: JSON.stringify({
+              topic: keyword,
+              language: enhancedKeywords.english.includes(keyword) ? 'en' : 'ko'
+            }),
           })
           .then(res => res.json())
-          .then(data => ({ 
-            source: `openalex_${index}`, 
+          .then(data => ({
+            source: `wikipedia_${index}`,
             keyword,
-            data 
+            data
           }))
-          .catch(error => ({ 
-            source: `openalex_${index}`, 
+          .catch(error => ({
+            source: `wikipedia_${index}`,
             keyword,
-            error: error.message 
+            error: error.message
           }))
         );
       });
     }
 
-    // 모든 API 결과 기다리기
+    // OpenAlex 다중 검색 (순차 처리로 Rate Limit 회피)
+    let academicKeywords: string[] = [];
+    let openalexResults: any[] = [];
+    if (includeOpenAlex) {
+      academicKeywords = [
+        ...enhancedKeywords.english.slice(0, 3),     // 영어 키워드 3개로 축소
+        ...enhancedKeywords.related.slice(0, 2),     // 관련 키워드 2개로 축소
+        ...(enhancedKeywords.technical?.slice(0, 2) || [])  // 기술 용어 2개
+      ];
+
+      console.log(`📄 OpenAlex 검색 키워드 (${academicKeywords.length}개):`, academicKeywords);
+
+      // 순차적으로 처리하여 Rate Limit 회피
+      for (let index = 0; index < academicKeywords.length; index++) {
+        const keyword = academicKeywords[index];
+        try {
+          console.log(`  → OpenAlex 검색 ${index + 1}/${academicKeywords.length}: ${keyword}`);
+
+          const res = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/research/openalex`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ topic: keyword, limit: 3 }),
+          });
+
+          const data = await res.json();
+          openalexResults.push({
+            source: `openalex_${index}`,
+            keyword,
+            data
+          });
+
+          // 요청 간 300ms 딜레이 (Rate Limit 회피)
+          if (index < academicKeywords.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        } catch (error) {
+          console.error(`OpenAlex 검색 실패 (${keyword}):`, error);
+          openalexResults.push({
+            source: `openalex_${index}`,
+            keyword,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+    }
+
+    // Perplexity 리서치 (선택 시)
+    if (includePerplexity && researchOptions?.perplexityApiKey) {
+      console.log(`✨ Perplexity 리서치 시작...`);
+      promises.push(
+        fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/research/perplexity`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            topic: topic,
+            apiKey: researchOptions.perplexityApiKey
+          }),
+        })
+        .then(res => res.json())
+        .then(data => ({
+          source: 'perplexity',
+          keyword: topic,
+          data
+        }))
+        .catch(error => ({
+          source: 'perplexity',
+          keyword: topic,
+          error: error.message
+        }))
+      );
+    }
+
+    // Wikipedia와 Perplexity 결과 기다리기
     const apiResults = await Promise.all(promises);
-    console.log(`✅ 검색 완료: ${apiResults.length}개 API 호출 완료`);
+    console.log(`✅ 검색 완료: ${apiResults.length}개 API 호출 완료 (Wikipedia + Perplexity)`);
+    console.log(`✅ OpenAlex 순차 검색 완료: ${openalexResults.length}개`);
 
     // 4단계: 결과 통합 및 정리
     console.log('4단계: 결과 필터링 및 정리 중...');
     let allWikipediaData: any[] = [];
     let allOpenalexData: any[] = [];
+    let perplexityData: any = null;
 
     // 결과를 키워드별로 분류
     const wikipediaResults: any[] = [];
-    const openalexResults: any[] = [];
+    // openalexResults는 이미 위에서 순차적으로 생성됨
 
     // 중복 제거를 위한 Set (제목 기반)
     const seenWikipediaTitles = new Set<string>();
@@ -431,8 +482,16 @@ export async function POST(req: NextRequest) {
     let wikipediaFiltered = 0;
     let openalexTotal = 0;
 
+    // Wikipedia와 Perplexity 결과 처리
     apiResults.forEach((result: any) => {
-      if (result.source.startsWith('wikipedia_')) {
+      if (result.source === 'perplexity') {
+        if (result.data && result.data.success) {
+          perplexityData = result.data.data;
+          console.log(`✅ Perplexity 리서치 성공`);
+        } else {
+          console.log(`❌ Perplexity 리서치 실패:`, result.error);
+        }
+      } else if (result.source.startsWith('wikipedia_')) {
         if (result.data && result.data.success && result.data.data) {
           const data = result.data.data;
           const title = data.title?.toLowerCase() || data.mainPage?.title?.toLowerCase() || '';
@@ -448,28 +507,27 @@ export async function POST(req: NextRequest) {
             allWikipediaData.push(data);
           }
         }
-      } else if (result.source.startsWith('openalex_')) {
-        if (result.data && result.data.success && result.data.data) {
-          const data = result.data.data;
+      }
+    });
 
-          // 논문 중복 제거
-          if (data.papers && Array.isArray(data.papers)) {
-            const uniquePapers = data.papers.filter((paper: any) => {
-              const paperId = paper.id || paper.doi || paper.title;
-              if (paperId && !seenPaperIds.has(paperId)) {
-                seenPaperIds.add(paperId);
-                return true;
-              }
-              return false;
-            });
+    // OpenAlex 결과 처리 (이미 순차적으로 생성됨)
+    openalexResults.forEach((result: any) => {
+      if (result.data && result.data.success && result.data.data) {
+        const data = result.data.data;
 
-            if (uniquePapers.length > 0) {
-              openalexResults.push({
-                keyword: result.keyword,
-                data: { ...data, papers: uniquePapers }
-              });
-              allOpenalexData.push({ ...data, papers: uniquePapers });
+        // 논문 중복 제거
+        if (data.papers && Array.isArray(data.papers)) {
+          const uniquePapers = data.papers.filter((paper: any) => {
+            const paperId = paper.id || paper.doi || paper.title;
+            if (paperId && !seenPaperIds.has(paperId)) {
+              seenPaperIds.add(paperId);
+              return true;
             }
+            return false;
+          });
+
+          if (uniquePapers.length > 0) {
+            allOpenalexData.push({ ...data, papers: uniquePapers });
           }
         }
       }
@@ -521,16 +579,21 @@ export async function POST(req: NextRequest) {
       },
       openalex: {
         success: openalexResults.length > 0,
-        results: openalexResults, 
+        results: openalexResults,
         best: bestOpenalexData,
-        totalSearches: includeAcademic ? academicKeywords.length : 0
+        totalSearches: includeOpenAlex ? academicKeywords.length : 0
+      },
+      perplexity: {
+        success: !!perplexityData,
+        data: perplexityData
       }
     };
 
     // 통합 분석 결과 생성 (모든 결과 데이터 사용)
     const analysis = await generateIntegratedAnalysis(topic, bestWikipediaData, bestOpenalexData, {
       wikipediaResults,
-      openalexResults
+      openalexResults,
+      perplexityData
     }, apiKey);
     
     const response = {
@@ -542,20 +605,27 @@ export async function POST(req: NextRequest) {
           foundWikipedia: wikipediaResults.length,
           foundAcademic: openalexResults.length,
           totalPapers: allOpenalexData.reduce((sum: number, data: any) => sum + (data.papers?.length || 0), 0),
-          totalSearches: wikipediaKeywords.length + (includeAcademic ? academicKeywords.length : 0),
+          totalSearches: wikipediaKeywords.length + (includeOpenAlex ? academicKeywords.length : 0) + (includePerplexity ? 1 : 0),
           bestResults: {
             wikipediaKeyword: wikipediaResults.find(r => r.data === bestWikipediaData)?.keyword,
             openalexKeyword: openalexResults.find(r => r.data === bestOpenalexData)?.keyword
           },
           searchKeywords: enhancedKeywords,
-          trendingConcepts: bestOpenalexData?.trends?.concepts || []
+          trendingConcepts: bestOpenalexData?.trends?.concepts || [],
+          detailedLogs: {
+            wikipediaKeywords: includeWikipedia ? wikipediaKeywords : [],
+            academicKeywords: includeOpenAlex ? academicKeywords : [],
+            wikipediaResults: wikipediaResults.map(r => ({ keyword: r.keyword, title: r.data?.title })),
+            academicResults: openalexResults.map(r => ({ keyword: r.keyword, papers: r.data?.data?.papers?.length || 0 }))
+          }
         }
       }
     };
 
     console.log(`=== 통합 리서치 완료: ${topic} ===`);
     console.log(`Wikipedia 검색: ${wikipediaResults.length}/${wikipediaKeywords.length}개 성공`);
-    console.log(`학술논문 검색: ${openalexResults.length}/${includeAcademic ? academicKeywords.length : 0}개 성공`);
+    console.log(`학술논문 검색: ${openalexResults.length}/${includeOpenAlex ? academicKeywords.length : 0}개 성공`);
+    console.log(`Perplexity 리서치: ${perplexityData ? '성공' : '미실행 또는 실패'}`);
     console.log(`총 논문 수: ${allOpenalexData.reduce((sum: number, data: any) => sum + (data.papers?.length || 0), 0)}개`);
 
     return NextResponse.json(response);
@@ -579,14 +649,15 @@ async function generateIntegratedAnalysis(topic: string, wikipediaData: any, ope
     // 모든 수집된 데이터 종합
     const allPapers = allResults.openalexResults?.flatMap((r: any) => r.data?.papers || []) || [];
     const allWikipediaData = allResults.wikipediaResults?.map((r: any) => r.data) || [];
+    const perplexityData = allResults.perplexityData;
 
     // 논문 데이터에서 패턴 분석
     const paperAnalysis = analyzePapers(allPapers);
     const marketAnalysis = analyzeMarketTrends(paperAnalysis, allWikipediaData);
     const competitorAnalysis = analyzeCompetitors(allPapers, topic);
 
-    // GPT를 사용한 심층 분석 생성
-    const deepInsights = await generateDeepInsights(topic, paperAnalysis, marketAnalysis, competitorAnalysis, apiKey, wikipediaData, openalexData);
+    // GPT를 사용한 심층 분석 생성 (Perplexity 데이터 포함)
+    const deepInsights = await generateDeepInsights(topic, paperAnalysis, marketAnalysis, competitorAnalysis, apiKey, wikipediaData, openalexData, perplexityData);
 
     return {
       topic,
@@ -748,7 +819,12 @@ function analyzeCompetitors(papers: any[], topic: string) {
   };
 }
 
-async function generateDeepInsights(topic: string, paperAnalysis: any, marketAnalysis: any, competitorAnalysis: any, apiKey: string, wikipediaData?: any, openalexData?: any) {
+async function generateDeepInsights(topic: string, paperAnalysis: any, marketAnalysis: any, competitorAnalysis: any, apiKey: string, wikipediaData?: any, openalexData?: any, perplexityData?: any) {
+  // Perplexity 데이터 요약 생성
+  const perplexitySection = perplexityData?.content
+    ? `\n4. **실시간 웹 리서치 (Perplexity AI)**\n${perplexityData.content.substring(0, 800)}...\n   (최신 시장 트렌드 및 전문가 의견 포함)`
+    : '';
+
   const prompt = `
 "${topic}" 프로젝트에 대한 리서치 결과를 분석하고 구체적인 추천 전략을 제공해주세요.
 
@@ -768,7 +844,7 @@ async function generateDeepInsights(topic: string, paperAnalysis: any, marketAna
 
 3. **기술 생태계**
    - 자주 언급되는 도구: ${competitorAnalysis.commonTools.slice(0, 3).map((t: any) => t.name).join(', ')}
-   - 주요 방법론: ${competitorAnalysis.commonMethods.slice(0, 3).map((m: any) => m.name).join(', ')}
+   - 주요 방법론: ${competitorAnalysis.commonMethods.slice(0, 3).map((m: any) => m.name).join(', ')}${perplexitySection}
 
 **📝 분석 요청:**
 
@@ -839,7 +915,11 @@ async function generateDeepInsights(topic: string, paperAnalysis: any, marketAna
     }
 
     const data = await response.json();
-    const content = data.choices[0]?.message?.content || '{}';
+    let content = data.choices[0]?.message?.content || '{}';
+
+    // JSON 코드 블록 제거 (```json ... ``` 형식)
+    content = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
     const parsed = JSON.parse(content);
 
     // researchSummary를 최상위로 올리고 기존 구조 유지

@@ -192,7 +192,9 @@ export default function IdeasPage() {
         {/* 헤더 바 */}
         <header className="bg-white border-b border-slate-200 px-4 py-4">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+            <a href="/" className="hover:opacity-80 transition-opacity cursor-pointer">
+              <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+            </a>
             <AuthButton />
           </div>
         </header>
@@ -217,7 +219,9 @@ export default function IdeasPage() {
       {/* 헤더 바 */}
       <header className="bg-white border-b border-slate-200 px-4 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+          <a href="/" className="hover:opacity-80 transition-opacity cursor-pointer">
+            <h1 className="text-xl sm:text-2xl font-bold gradient-text">NALO</h1>
+          </a>
           <AuthButton />
         </div>
       </header>

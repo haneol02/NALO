@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`OpenAlex 학술 검색 시작: ${topic}`);
 
-    // OpenAlex API로 관련 논문 검색
+    // OpenAlex API로 관련 논문 검색 (재시도 로직 포함)
     const searchUrl = 'https://api.openalex.org/works';
     const searchParams = new URLSearchParams({
       search: topic,
@@ -22,14 +22,43 @@ export async function POST(req: NextRequest) {
       filter: 'from_publication_date:2020-01-01' // 2020년 이후 논문만
     });
 
-    const response = await fetch(`${searchUrl}?${searchParams}`, {
-      headers: {
-        'User-Agent': 'NALO-Research-Bot/1.0 (https://nalo.vercel.app)',
-      },
-    });
+    let response;
+    let retries = 0;
+    const maxRetries = 3;
 
-    if (!response.ok) {
-      throw new Error(`OpenAlex API 호출 실패: ${response.status}`);
+    while (retries < maxRetries) {
+      try {
+        response = await fetch(`${searchUrl}?${searchParams}`, {
+          headers: {
+            'User-Agent': 'NALO-Research-Bot/1.0 (https://nalo.vercel.app)',
+            'mailto': 'contact@nalo.app', // OpenAlex 권장 헤더
+          },
+        });
+
+        if (response.ok) {
+          break; // 성공하면 루프 탈출
+        }
+
+        if (response.status === 429) {
+          // Rate limit - 대기 후 재시도
+          const waitTime = Math.min(1000 * Math.pow(2, retries), 5000); // 1초, 2초, 4초 (최대 5초)
+          console.log(`OpenAlex Rate Limit - ${waitTime}ms 대기 후 재시도 (${retries + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          retries++;
+        } else {
+          throw new Error(`OpenAlex API 호출 실패: ${response.status}`);
+        }
+      } catch (error) {
+        if (retries === maxRetries - 1) {
+          throw error;
+        }
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    if (!response || !response.ok) {
+      throw new Error(`OpenAlex API 호출 실패: Rate Limit 초과`);
     }
 
     const data = await response.json();

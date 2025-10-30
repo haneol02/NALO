@@ -15,7 +15,7 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
   const [inputText, setInputText] = useState('');
   const [totalIdeas, setTotalIdeas] = useState<number>(0);
   const [isExtracting, setIsExtracting] = useState(false);
-  const [generationMode, setGenerationMode] = useState<'topic' | 'direct' | 'mindmap'>('topic');
+  const [generationMode, setGenerationMode] = useState<'topic' | 'mindmap'>('topic');
 
   // 마인드맵 불러오기 함수
   const handleLoadMindmap = () => {
@@ -80,9 +80,7 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
       return;
     }
 
-    if (generationMode === 'direct' && onDirectGeneration) {
-      await onDirectGeneration(inputText.trim());
-    } else if (generationMode === 'mindmap' && onMindmapGeneration) {
+    if (generationMode === 'mindmap' && onMindmapGeneration) {
       await onMindmapGeneration(inputText.trim());
     } else {
       await onSearch(inputText.trim());
@@ -94,13 +92,13 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
       <div className="card card-hover mt-6 sm:mt-8 md:mt-12">
         <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
           {/* 생성 모드 선택 */}
-          {(onDirectGeneration || onMindmapGeneration) && (
+          {onMindmapGeneration && (
             <div className="space-y-3">
               <div className="text-sm font-semibold text-slate-800 mb-3">생성 방식 선택:</div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                  generationMode === 'topic' 
-                    ? 'border-blue-500 bg-blue-50' 
+                  generationMode === 'topic'
+                    ? 'border-blue-500 bg-blue-50'
                     : 'border-slate-200 bg-white hover:border-slate-300'
                 }`}>
                   <input
@@ -108,57 +106,35 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
                     name="generationMode"
                     value="topic"
                     checked={generationMode === 'topic'}
-                    onChange={(e) => setGenerationMode(e.target.value as 'topic' | 'direct' | 'mindmap')}
+                    onChange={(e) => setGenerationMode(e.target.value as 'topic' | 'mindmap')}
                     className="mr-3"
                   />
                   <div>
-                    <div className="text-sm font-medium text-slate-800">주제 탐색</div>
-                    <div className="text-xs text-slate-600">탐색 → 확장 → 생성</div>
+                    <div className="text-sm font-medium text-slate-800">주제 탐색 (리서치)</div>
+                    <div className="text-xs text-slate-600">다양한 소스 리서치 기반</div>
                   </div>
                 </label>
-                {onDirectGeneration && (
-                  <label className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                    generationMode === 'direct' 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="generationMode"
-                      value="direct"
-                      checked={generationMode === 'direct'}
-                      onChange={(e) => setGenerationMode(e.target.value as 'topic' | 'direct' | 'mindmap')}
-                      className="mr-3"
-                    />
-                    <div>
-                      <div className="text-sm font-medium text-slate-800">빠른 생성</div>
-                      <div className="text-xs text-slate-600">입력 → 즉시 생성</div>
+                <label className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                  generationMode === 'mindmap'
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="generationMode"
+                    value="mindmap"
+                    checked={generationMode === 'mindmap'}
+                    onChange={(e) => setGenerationMode(e.target.value as 'topic' | 'mindmap')}
+                    className="mr-3"
+                  />
+                  <div>
+                    <div className="text-sm font-medium text-slate-800 flex items-center gap-1">
+                      <GitBranch className="w-3 h-3" />
+                      브레인스토밍 (마인드맵)
                     </div>
-                  </label>
-                )}
-                {onMindmapGeneration && (
-                  <label className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                    generationMode === 'mindmap' 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="generationMode"
-                      value="mindmap"
-                      checked={generationMode === 'mindmap'}
-                      onChange={(e) => setGenerationMode(e.target.value as 'topic' | 'direct' | 'mindmap')}
-                      className="mr-3"
-                    />
-                    <div>
-                      <div className="text-sm font-medium text-slate-800 flex items-center gap-1">
-                        <GitBranch className="w-3 h-3" />
-                        브레인스토밍(beta)
-                      </div>
-                      <div className="text-xs text-slate-600">시각적 구체화</div>
-                    </div>
-                  </label>
-                )}
+                    <div className="text-xs text-slate-600">시각적 아이디어 확장</div>
+                  </div>
+                </label>
               </div>
             </div>
           )}
@@ -175,11 +151,9 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
               onChange={(e) => setInputText(e.target.value)}
             />
             <p className="text-[10px] min-[375px]:text-xs sm:text-sm text-slate-500 text-center px-2">
-              {generationMode === 'direct' 
-                ? 'AI가 바로 아이디어를 생성해드립니다.'
-                : generationMode === 'mindmap'
-                ? 'AI가 브레인스토밍을 통해 시각적으로 아이디어를 구체화해드립니다.'
-                : 'AI가 주제를 생성하여 탐색과 확장을 도와드립니다.'
+              {generationMode === 'mindmap'
+                ? 'AI가 마인드맵으로 아이디어를 시각적으로 구체화하고 확장합니다.'
+                : 'AI가 다양한 소스(Wikipedia, 논문, Web)에서 리서치하여 아이디어를 생성합니다.'
               }
             </p>
           </div>
@@ -202,23 +176,19 @@ export default function IdeaGenerator({ onSearch, isLoading, selectedKeywords: p
                   <span className="flex items-center justify-center gap-2">
                     <div className="animate-spin rounded-full h-4 sm:h-5 w-4 sm:w-5 border-2 border-white border-t-transparent"></div>
                     <span className="hidden min-[375px]:inline">
-                      {generationMode === 'direct' ? '아이디어 생성 중...' : 
-                       generationMode === 'mindmap' ? '브레인스토밍 생성 중...' : '주제 생성 중...'}
+                      {generationMode === 'mindmap' ? '브레인스토밍 생성 중...' : '주제 생성 중...'}
                     </span>
                     <span className="min-[375px]:hidden">
-                      {generationMode === 'direct' ? '생성 중...' : 
-                       generationMode === 'mindmap' ? '생성 중...' : '주제 생성 중...'}
+                      {generationMode === 'mindmap' ? '생성 중...' : '주제 생성 중...'}
                     </span>
                   </span>
                 ) : (
                   <span>
                     <span className="hidden min-[375px]:inline">
-                      {generationMode === 'direct' ? '바로 아이디어 생성하기' : 
-                       generationMode === 'mindmap' ? '브레인스토밍으로 구체화하기' : '주제 탐색 시작하기'}
+                      {generationMode === 'mindmap' ? '브레인스토밍으로 구체화하기' : '주제 탐색 시작하기'}
                     </span>
                     <span className="min-[375px]:hidden">
-                      {generationMode === 'direct' ? '바로 생성' : 
-                       generationMode === 'mindmap' ? '브레인스토밍' : '탐색 시작'}
+                      {generationMode === 'mindmap' ? '브레인스토밍' : '탐색 시작'}
                     </span>
                   </span>
                 )}
