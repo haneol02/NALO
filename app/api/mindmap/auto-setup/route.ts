@@ -61,13 +61,13 @@ export async function POST(request: Request) {
   "categories": [
     {
       "title": "카테고리 제목",
-      "type": "problem|idea|feature|solution|detail",
+      "type": "node",
       "description": "카테고리 설명",
       "priority": "high|medium|low",
       "subItems": [
         {
           "title": "하위 아이템 제목",
-          "type": "problem|idea|feature|solution|detail",
+          "type": "node",
           "description": "구체적인 설명",
           "difficulty": "easy|medium|hard",
           "importance": "high|medium|low"

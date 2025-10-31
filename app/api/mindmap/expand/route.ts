@@ -117,29 +117,29 @@ function extractSuggestionsFromText(text: string, selectedNode: any) {
       if (systemMatches.length > 0) {
         suggestions.push({
           label: '실시간 경고 시스템',
-          type: 'feature',
+          type: 'node',
           description: '실시간으로 상태를 모니터링하고 경고를 전송하는 시스템',
           priority: 'high',
           complexity: 'moderate',
           value: '안전성 강화 및 사고 예방'
         });
       }
-      
+
       if (serviceMatches.length > 0) {
         suggestions.push({
           label: '교육 프로그램 서비스',
-          type: 'feature',
+          type: 'node',
           description: '정기적인 교육 및 훈련을 제공하는 서비스',
           priority: 'medium',
           complexity: 'simple',
           value: '인식 제고 및 능력 향상'
         });
       }
-      
+
       if (safetyMatches.length > 0) {
         suggestions.push({
           label: '안전 점검 관리',
-          type: 'feature',
+          type: 'node',
           description: '체계적인 안전 점검 및 관리 기능',
           priority: 'high',
           complexity: 'moderate',
@@ -149,10 +149,10 @@ function extractSuggestionsFromText(text: string, selectedNode: any) {
       
       // 여전히 없으면 기본 키워드로
       if (suggestions.length === 0) {
-        keywords.slice(0, 3).forEach((keyword, index) => {
+        keywords.slice(0, 3).forEach((keyword) => {
           suggestions.push({
             label: `${keyword} 관련 기능`,
-            type: index === 0 ? 'feature' : index === 1 ? 'solution' : 'detail',
+            type: 'node',
             description: `${keyword}와 관련된 구체적인 구현 방안`,
             priority: 'medium',
             complexity: 'moderate',
@@ -191,32 +191,17 @@ function getDefaultSuggestions(selectedNode: any) {
   const nodeType = selectedNode.data.type;
   const fallbackSuggestions = {
     'root': [
-      { label: '핵심 기능 정의', type: 'feature', description: '프로젝트의 주요 기능을 구체화', priority: 'high', complexity: 'moderate', value: '프로젝트 방향성 확립' },
-      { label: '사용자 요구사항', type: 'problem', description: '대상 사용자의 핵심 니즈 분석', priority: 'high', complexity: 'simple', value: '사용자 중심 설계' },
-      { label: '기술적 제약사항', type: 'problem', description: '구현 시 고려해야 할 기술적 한계', priority: 'medium', complexity: 'complex', value: '현실적 개발 계획' }
+      { label: '핵심 기능 정의', type: 'node', description: '프로젝트의 주요 기능을 구체화', priority: 'high', complexity: 'moderate', value: '프로젝트 방향성 확립' },
+      { label: '사용자 요구사항', type: 'node', description: '대상 사용자의 핵심 니즈 분석', priority: 'high', complexity: 'simple', value: '사용자 중심 설계' },
+      { label: '기술적 제약사항', type: 'node', description: '구현 시 고려해야 할 기술적 한계', priority: 'medium', complexity: 'complex', value: '현실적 개발 계획' }
     ],
-    'idea': [
-      { label: '구현 방안', type: 'solution', description: '아이디어를 실현하기 위한 구체적 방법', priority: 'high', complexity: 'moderate', value: '실행력 확보' },
-      { label: '필요한 기능', type: 'feature', description: '아이디어 실현을 위해 필요한 기능들', priority: 'medium', complexity: 'simple', value: '기능 명세화' }
-    ],
-    'feature': [
-      { label: '세부 스펙', type: 'detail', description: '기능의 상세한 명세와 동작 방식', priority: 'high', complexity: 'moderate', value: '명확한 요구사항' },
-      { label: '구현 이슈', type: 'problem', description: '기능 구현 시 예상되는 문제점', priority: 'medium', complexity: 'complex', value: '리스크 관리' }
-    ],
-    'problem': [
-      { label: '해결 방안', type: 'solution', description: '문제를 해결하기 위한 구체적 방법', priority: 'high', complexity: 'moderate', value: '문제 해결' },
-      { label: '대안 검토', type: 'solution', description: '다양한 접근 방식과 대안책', priority: 'medium', complexity: 'simple', value: '선택권 확보' }
-    ],
-    'solution': [
-      { label: '실행 계획', type: 'detail', description: '솔루션의 단계별 실행 방안', priority: 'high', complexity: 'moderate', value: '체계적 실행' },
-      { label: '효과 측정', type: 'detail', description: '솔루션 효과를 측정하는 방법', priority: 'medium', complexity: 'simple', value: '성과 검증' }
-    ],
-    'detail': [
-      { label: '구체화', type: 'detail', description: '더욱 상세한 내용과 명세', priority: 'medium', complexity: 'simple', value: '완성도 향상' }
+    'node': [
+      { label: '구체적 내용', type: 'node', description: '세부적인 내용과 설명', priority: 'medium', complexity: 'simple', value: '명확한 구조화' },
+      { label: '추가 사항', type: 'node', description: '보완이 필요한 추가 내용', priority: 'medium', complexity: 'simple', value: '완성도 향상' }
     ]
   };
-  
-  return (fallbackSuggestions as any)[nodeType] || fallbackSuggestions['idea'];
+
+  return (fallbackSuggestions as any)[nodeType] || fallbackSuggestions['node'];
 }
 
 export async function POST(request: NextRequest) {
@@ -242,13 +227,11 @@ export async function POST(request: NextRequest) {
     }
 
     // AI 프롬프트 생성
-    const { mode, category, prompt: customPrompt, count, aiDetermineCount } = expandOptions;
-    
-    // 지능적 카테고리 선택 및 모드별 전략 설정
-    let selectedCategory = category;
+    const { mode, prompt: customPrompt, count, aiDetermineCount } = expandOptions;
+
+    // 모드별 전략 설정
     let modeStrategy = '';
-    let typeInstruction = '';
-    
+
     // 모드별 지능적 전략 수립
     if (mode === 'simple') {
       modeStrategy = `**간편 모드 전략:**
@@ -256,38 +239,23 @@ export async function POST(request: NextRequest) {
 - 즉시 실행 가능한 실용적 아이디어 우선
 - 복잡한 기술적 내용보다는 핵심 가치에 집중
 - 명확하고 구체적인 액션 아이템 제공`;
-      
-      if (category && category !== 'mixed') {
-        selectedCategory = category;
-        typeInstruction = `지정된 "${category}" 카테고리 내에서 다양한 관점의 아이디어를 제안하되, 모든 제안의 타입은 "${category}"로 통일해주세요.`;
-      } else {
-        typeInstruction = `노드의 특성을 분석하여 가장 적합한 단일 카테고리를 선택한 후, 해당 카테고리 내에서 다양한 아이디어를 제안해주세요.`;
-      }
     } else if (mode === 'advanced') {
       modeStrategy = `**고급 모드 전략:**
 - 전문가 수준의 깊이 있는 분석과 제안
-- 혁신적이고 창의적인 접근 방식 탐구  
+- 혁신적이고 창의적인 접근 방식 탐구
 - 기술적 세부사항과 구현 복잡성 고려
 - 장기적 관점과 전략적 가치 평가
-- 다각도 분석을 통한 종합적 솔루션 제시`;
-      
-      if (customPrompt && customPrompt.trim()) {
-        selectedCategory = 'mixed';
-        typeInstruction = `사용자 프롬프트 "${customPrompt}"를 심층 분석하여:
-1. 프롬프트의 숨은 의도와 핵심 요구사항 파악
-2. 가장 적합한 카테고리들을 전략적으로 선택
-3. 각 아이디어마다 최적의 타입(idea/feature/problem/solution/detail) 할당
-4. 프롬프트 요구사항을 초과하는 가치있는 인사이트 제공`;
-      } else {
-        typeInstruction = `선택된 노드를 전문가적 관점에서 분석하여 가장 가치있는 확장 방향을 결정하고, 각 아이디어의 타입을 전략적으로 선택해주세요.`;
-      }
+- 다각도 분석을 통한 종합적 솔루션 제시
+${customPrompt && customPrompt.trim() ? `
+**사용자 지시사항:**
+"${customPrompt}"
+위 지시사항을 반드시 반영하여 확장해주세요.` : ''}`;
     } else {
       // auto 모드나 기타
       modeStrategy = `**자동 모드 전략:**
 - AI가 상황을 종합 분석하여 최적의 접근 방식 결정
 - 균형잡힌 실용성과 혁신성 추구
 - 프로젝트 전체 맥락을 고려한 체계적 제안`;
-      typeInstruction = `노드와 전체 맥락을 종합 분석하여 각 아이디어의 타입을 지능적으로 결정해주세요.`;
     }
 
     // 지능적 분석을 위한 고도화된 프롬프트
@@ -308,8 +276,6 @@ ${context || '전체 주제: 알 수 없음'}
 
 **확장 설정:**
 - 모드: ${mode || 'simple'}
-${selectedCategory && selectedCategory !== 'mixed' ? `- 지정된 카테고리: ${selectedCategory}` : ''}
-${mode === 'advanced' && customPrompt ? `- 사용자 프롬프트: "${customPrompt}"` : ''}
 
 ${modeStrategy}
 
@@ -341,21 +307,20 @@ ${modeStrategy}
    - 구체적이고 실행 가능한 솔루션 도출
 
 **모드별 생성 규칙:**
-- 개수: ${aiDetermineCount || (mode === 'simple' && selectedCategory === 'mixed') ? 
-  '최적의 개수(2-6개)를 상황에 맞게 지능적으로 결정' : 
+- 개수: ${aiDetermineCount ?
+  '최적의 개수(2-6개)를 상황에 맞게 지능적으로 결정' :
   `정확히 ${count || 3}개`}
-- 품질 기준: ${mode === 'simple' ? 
-  '명확성, 실용성, 즉시 실행가능성을 핵심으로 한 사용자 친화적 내용' : 
-  mode === 'advanced' ? 
-  '독창성, 전문성, 혁신성을 갖춘 깊이 있는 고품질 내용' : 
+- 품질 기준: ${mode === 'simple' ?
+  '명확성, 실용성, 즉시 실행가능성을 핵심으로 한 사용자 친화적 내용' :
+  mode === 'advanced' ?
+  '독창성, 전문성, 혁신성을 갖춘 깊이 있는 고품질 내용' :
   '실용성과 창의성을 균형있게 갖춘 고품질 내용'}
 - 연관성: 선택된 노드와 강한 논리적 연결성 보장
-- 다양성: ${mode === 'simple' ? 
-  '다양한 실행 방법과 접근 각도로 실용적 다양성 확보' : 
-  mode === 'advanced' ? 
-  '서로 다른 전문 영역과 혁신적 관점으로 창의적 다양성 확보' : 
+- 다양성: ${mode === 'simple' ?
+  '다양한 실행 방법과 접근 각도로 실용적 다양성 확보' :
+  mode === 'advanced' ?
+  '서로 다른 전문 영역과 혁신적 관점으로 창의적 다양성 확보' :
   '서로 다른 관점과 접근 방식으로 균형잡힌 다양성 확보'}
-${typeInstruction}
 
 **중요 지침:**
 - **노드 정보 필수 반영**: 노드명 "${selectedNode.data.label}"${selectedNode.data.description ? `과 설명 "${selectedNode.data.description}"` : ''} 모두를 반드시 분석하고 활용
@@ -376,7 +341,7 @@ ${selectedNode.data.description ? `- **설명 중심 확장**: "${selectedNode.d
   "suggestions": [
     {
       "label": "아이디어 제목",
-      "type": "idea|feature|problem|solution|detail",
+      "type": "node",
       "description": "구체적이고 실용적인 설명",
       "priority": "high|medium|low",
       "complexity": "simple|moderate|complex",
@@ -437,7 +402,7 @@ ${mode === 'simple' ?
 
 **결과물 요구사항:**
 - ${mode === 'simple' ? '명확한 설명과 실행 방법' : mode === 'advanced' ? '심층적 분석과 전문적 근거' : '체계적 분석과 실용적 근거'} 제시
-- ${aiDetermineCount || (mode === 'simple' && selectedCategory === 'mixed') ? '최적 개수 지능적 결정 (2-6개 범위)' : `정확히 ${expandOptions.count || 3}개 생성`}
+- ${aiDetermineCount ? '최적 개수 지능적 결정 (2-6개 범위)' : `정확히 ${count || 3}개 생성`}
 - 각 아이디어마다 ${mode === 'simple' ? '실행 난이도와 효과' : mode === 'advanced' ? '혁신성과 전략적 가치' : '우선순위와 실현가능성'} 평가
 - ${mode === 'simple' ? '구체적 실행 단계와 기대 효과' : mode === 'advanced' ? '전문적 구현 방안과 비즈니스 가치' : '실용적 실행 방안과 핵심 가치'} 명시
 
@@ -547,10 +512,10 @@ ${mode === 'simple' ?
       // 품질 검증: 각 제안의 필수 필드 확인
       suggestions = suggestions.map((suggestion: any) => ({
         label: suggestion.label || '제안 아이디어',
-        type: suggestion.type || 'idea',
+        type: 'node',
         description: suggestion.description || '상세 설명 필요',
         priority: suggestion.priority || 'medium',
-        complexity: suggestion.complexity || 'moderate', 
+        complexity: suggestion.complexity || 'moderate',
         value: suggestion.value || '가치 분석 필요'
       }));
       

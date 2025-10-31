@@ -25,8 +25,9 @@ import { getApiKey } from '@/app/lib/apiKeyStorage';
 // 노드 타입 정의
 interface MindmapNodeData {
   label: string;
-  type: 'root' | 'idea' | 'feature' | 'detail' | 'problem' | 'solution';
+  type: 'root' | 'node';
   description?: string;
+  color?: string; // 노드 색상 (기본값: gray)
   isEditing?: boolean;
   isEmpty?: boolean;
   isNewNode?: boolean;
@@ -46,6 +47,7 @@ const CustomNode = ({
   const [editLabel, setEditLabel] = React.useState(data.label);
   const [editDescription, setEditDescription] = React.useState(data.description || '');
   const [editType, setEditType] = React.useState(data.type);
+  const [editColor, setEditColor] = React.useState(data.color || 'gray');
   const inputRef = React.useRef<HTMLInputElement>(null);
   const descriptionRef = React.useRef<HTMLTextAreaElement>(null);
   
@@ -111,21 +113,22 @@ const CustomNode = ({
   // 편집 저장
   const saveEdit = React.useCallback(() => {
     if (!editLabel.trim()) return;
-    
+
     console.log('saveEdit 호출됨');
-    
+
     // 즉시 로컬 상태 업데이트
     setIsEditing(false);
-    
+
     // 부모 컴포넌트에 업데이트 전달
     updateNode({
       label: editLabel.trim(),
       description: editDescription.trim() || undefined,
       type: editType,
+      color: editColor,
       isEditing: false,
       isEmpty: false
     });
-  }, [editLabel, editDescription, editType, updateNode]);
+  }, [editLabel, editDescription, editType, editColor, updateNode]);
 
   // 편집 취소
   const cancelEdit = React.useCallback(() => {
@@ -185,13 +188,20 @@ const CustomNode = ({
   };
 
   const getNodeColor = () => {
-    switch (data.type) {
-      case 'root': return 'bg-blue-500 text-white border-blue-600';
-      case 'idea': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'feature': return 'bg-purple-100 text-purple-800 border-purple-300';
-      case 'problem': return 'bg-red-100 text-red-800 border-red-300';
-      case 'solution': return 'bg-green-100 text-green-800 border-green-300';
-      case 'detail': return 'bg-indigo-100 text-indigo-800 border-indigo-300';
+    if (data.type === 'root') {
+      return 'bg-blue-500 text-white border-blue-600';
+    }
+
+    const color = data.color || 'gray';
+    switch (color) {
+      case 'gray': return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'red': return 'bg-red-100 text-red-800 border-red-300';
+      case 'orange': return 'bg-orange-100 text-orange-800 border-orange-300';
+      case 'yellow': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'green': return 'bg-green-100 text-green-800 border-green-300';
+      case 'blue': return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'purple': return 'bg-purple-100 text-purple-800 border-purple-300';
+      case 'pink': return 'bg-pink-100 text-pink-800 border-pink-300';
       default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
@@ -199,12 +209,8 @@ const CustomNode = ({
   const getCategoryLabel = () => {
     switch (data.type) {
       case 'root': return '메인';
-      case 'idea': return '아이디어';
-      case 'feature': return '기능';
-      case 'problem': return '문제점';
-      case 'solution': return '해결책';
-      case 'detail': return '세부사항';
-      default: return '기타';
+      case 'node': return '노드';
+      default: return '노드';
     }
   };
 
@@ -220,16 +226,16 @@ const CustomNode = ({
         onMouseDown={(e) => e.stopPropagation()}
         onDragStart={(e) => e.preventDefault()}
       >
-        {/* 상위 노드 연결점 */}
+        {/* 상위 노드 연결점 - 숨김 처리 (edge 연결용) */}
         {editType !== 'root' && (
           <Handle
             type="target"
             position={Position.Top}
-            className="w-3 h-3 bg-blue-500 border-2 border-white"
-            style={{ top: -6 }}
+            className="opacity-0 pointer-events-none"
+            style={{ top: 0 }}
           />
         )}
-        
+
         <div className="space-y-2">
           {/* 제목 입력 */}
           <div className="flex items-center gap-2">
@@ -290,20 +296,34 @@ const CustomNode = ({
             style={{ minHeight: '28px', maxHeight: '100px' }}
           />
 
-          {/* 카테고리 선택 */}
+          {/* 색상 선택 - root가 아닌 경우에만 표시 */}
           {editType !== 'root' && (
-            <select
-              value={editType}
-              onChange={(e) => setEditType(e.target.value as MindmapNodeData['type'])}
-              onMouseDown={(e) => e.stopPropagation()}
-              className="w-full px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
-            >
-              <option value="idea">아이디어</option>
-              <option value="feature">기능</option>
-              <option value="problem">문제점</option>
-              <option value="solution">해결책</option>
-              <option value="detail">세부사항</option>
-            </select>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">노드 색상</label>
+              <div className="flex gap-2 flex-wrap">
+                {['gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'].map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setEditColor(color)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className={`w-8 h-8 rounded-full border-2 transition-all ${
+                      editColor === color ? 'border-blue-500 scale-110' : 'border-gray-300'
+                    }`}
+                    style={{
+                      backgroundColor: color === 'gray' ? '#e5e7eb' :
+                                      color === 'red' ? '#fee2e2' :
+                                      color === 'orange' ? '#fed7aa' :
+                                      color === 'yellow' ? '#fef3c7' :
+                                      color === 'green' ? '#d1fae5' :
+                                      color === 'blue' ? '#dbeafe' :
+                                      color === 'purple' ? '#e9d5ff' :
+                                      '#fce7f3'
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
           )}
 
           {/* 저장/취소 버튼 */}
@@ -343,13 +363,13 @@ const CustomNode = ({
             </button>
           </div>
         </div>
-        
-        {/* 하위 노드 연결점 */}
+
+        {/* 하위 노드 연결점 - 숨김 처리 (edge 연결용) */}
         <Handle
           type="source"
           position={Position.Bottom}
-          className="w-3 h-3 bg-green-500 border-2 border-white"
-          style={{ bottom: -6 }}
+          className="opacity-0 pointer-events-none"
+          style={{ bottom: 0 }}
         />
       </div>
     );
@@ -368,16 +388,16 @@ const CustomNode = ({
       style={{ width: 'auto', maxWidth: '300px' }}
       onDoubleClick={() => setIsEditing(true)}
     >
-      {/* 상위 노드 연결점 - 루트 노드가 아닐 때만 표시 */}
+      {/* 상위 노드 연결점 - 숨김 처리 (edge 연결용) */}
       {data.type !== 'root' && (
         <Handle
           type="target"
           position={Position.Top}
-          className="w-3 h-3 bg-blue-500 border-2 border-white"
-          style={{ top: -6 }}
+          className="opacity-0 pointer-events-none"
+          style={{ top: 0 }}
         />
       )}
-      
+
       <div className="flex items-center justify-between gap-2 mb-1">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {getNodeIcon()}
@@ -392,13 +412,13 @@ const CustomNode = ({
           {data.description}
         </p>
       )}
-      
-      {/* 하위 노드 연결점 */}
+
+      {/* 하위 노드 연결점 - 숨김 처리 (edge 연결용) */}
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-3 h-3 bg-green-500 border-2 border-white"
-        style={{ bottom: -6 }}
+        className="opacity-0 pointer-events-none"
+        style={{ bottom: 0 }}
       />
     </div>
   );
@@ -624,16 +644,36 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
       reader.onload = (event) => {
         try {
           const data = JSON.parse(event.target?.result as string);
-          
+
           // 데이터 유효성 검사
           if (data.nodes && data.edges && Array.isArray(data.nodes) && Array.isArray(data.edges)) {
-            setNodes(data.nodes);
+            // 구 타입을 새 타입으로 마이그레이션
+            const migratedNodes = data.nodes.map((node: any) => {
+              const oldType = node.data?.type;
+              let newType: 'root' | 'node' = 'node';
+
+              if (oldType === 'root') {
+                newType = 'root';
+              } else if (['idea', 'feature', 'detail', 'problem', 'solution'].includes(oldType)) {
+                newType = 'node';
+              }
+
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  type: newType
+                }
+              };
+            });
+
+            setNodes(migratedNodes);
             setEdges(data.edges);
-            
+
             // 히스토리 초기화
-            setHistory([{ nodes: data.nodes, edges: data.edges }]);
+            setHistory([{ nodes: migratedNodes, edges: data.edges }]);
             setHistoryIndex(0);
-            
+
             console.log('마인드맵이 성공적으로 로드되었습니다.');
           } else {
             console.error('잘못된 마인드맵 파일 형식입니다.');
@@ -2142,30 +2182,12 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
             {/* 간편 모드 설정 */}
             {aiExpandMode === 'simple' && (
               <div className="space-y-4 mb-6">
-                {/* 카테고리 선택 */}
+                {/* 생성 개수 슬라이더 */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">생성 방식</label>
-                  <select
-                    value={aiExpandCategory}
-                    onChange={(e) => setAiExpandCategory(e.target.value as MindmapNodeData['type'] | 'mixed')}
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  >
-                    <option value="mixed">주제 기반 생성 (추천)</option>
-                    <option value="idea">아이디어 위주</option>
-                    <option value="feature">기능 위주</option>
-                    <option value="problem">문제점 위주</option>
-                    <option value="solution">해결책 위주</option>
-                    <option value="detail">세부사항 위주</option>
-                  </select>
-                </div>
-
-                {/* 확장 개수 슬라이더 - 주제 기반 생성이 아닐 때만 표시 */}
-                {aiExpandCategory !== 'mixed' && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      생성할 노드 개수: <span className="text-green-600 font-bold">{aiExpandCount}개</span>
-                    </label>
-                    <div className="px-3">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    생성할 노드 개수: <span className="text-green-600 font-bold">{aiExpandCount}개</span>
+                  </label>
+                  <div className="px-3">
                       <input
                         type="range"
                         min="1"
@@ -2177,14 +2199,13 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
                           background: `linear-gradient(to right, #10b981 0%, #10b981 ${((aiExpandCount - 1) / 7) * 100}%, #e5e7eb ${((aiExpandCount - 1) / 7) * 100}%, #e5e7eb 100%)`
                         }}
                       />
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>1개</span>
-                        <span>4개</span>
-                        <span>8개</span>
-                      </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>1개</span>
+                      <span>4개</span>
+                      <span>8개</span>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             )}
 
@@ -2481,7 +2502,6 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
             onNodeClick={onNodeClick}
             onNodeDoubleClick={onNodeDoubleClick}
             onNodeContextMenu={onNodeContextMenu}
@@ -2494,7 +2514,6 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
             onPaneContextMenu={onPaneContextMenu}
             onInit={setReactFlowInstance}
             nodeTypes={nodeTypes}
-            connectionLineStyle={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: 'none' }}
             fitView
             fitViewOptions={{
               padding: 0.05,
