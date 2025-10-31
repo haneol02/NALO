@@ -37,6 +37,13 @@ export default function ResearchResults({
 
   const { analysis, sources } = researchData;
 
+  // 디버깅: 데이터 구조 확인
+  console.log('=== ResearchResults 데이터 구조 ===');
+  console.log('researchData:', researchData);
+  console.log('sources:', sources);
+  console.log('sources.wikipedia:', sources?.wikipedia);
+  console.log('sources.openalex:', sources?.openalex);
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* 헤더 */}
@@ -59,14 +66,16 @@ export default function ResearchResults({
 
       {/* Wikipedia 리서치 */}
       <WikipediaSection
-        data={sources?.wikipedia || []}
+        data={sources?.wikipedia?.results || []}
         isIncluded={researchOptions?.includeWikipedia !== false}
+        searchKeywords={researchData.summary?.detailedLogs?.wikipediaKeywords || []}
       />
 
       {/* 학술 논문 리서치 */}
       <AcademicSection
-        data={sources?.openalex || []}
+        data={sources?.openalex?.results || []}
         isIncluded={researchOptions?.includeAcademic !== false}
+        searchKeywords={researchData.summary?.detailedLogs?.academicKeywords || []}
       />
 
       {/* Perplexity 리서치 */}

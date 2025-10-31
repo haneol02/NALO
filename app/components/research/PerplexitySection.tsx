@@ -51,8 +51,8 @@ export default function PerplexitySection({ data, isIncluded }: PerplexitySectio
                   a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline" />,
                   ul: ({node, ...props}) => <ul {...props} className="list-disc list-inside space-y-1" />,
                   ol: ({node, ...props}) => <ol {...props} className="list-decimal list-inside space-y-1" />,
-                  code: ({node, inline, ...props}) =>
-                    inline
+                  code: ({node, ...props}: any) =>
+                    props.inline
                       ? <code {...props} className="bg-orange-200 text-orange-900 px-1 py-0.5 rounded text-xs" />
                       : <code {...props} className="block bg-slate-800 text-slate-100 p-3 rounded overflow-x-auto text-xs" />,
                   h1: ({node, ...props}) => <h1 {...props} className="text-lg font-bold text-orange-900 mt-4 mb-2" />,

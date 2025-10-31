@@ -7,6 +7,8 @@ const API_KEY_VERIFIED_STORAGE_KEY = 'nalo_openai_api_key_verified';
 const PERPLEXITY_API_KEY_STORAGE_KEY = 'nalo_perplexity_api_key';
 const PERPLEXITY_API_KEY_VERIFIED_STORAGE_KEY = 'nalo_perplexity_api_key_verified';
 const USE_PERPLEXITY_RESEARCH_KEY = 'nalo_use_perplexity_research';
+const G2B_API_KEY_STORAGE_KEY = 'nalo_g2b_api_key';
+const USE_G2B_RESEARCH_KEY = 'nalo_use_g2b_research';
 
 /**
  * API 키를 로컬 스토리지에 저장
@@ -144,6 +146,54 @@ export const isPerplexityApiKeyVerified = (): boolean => {
         return false;
       }
     }
+  }
+  return false;
+};
+
+/**
+ * G2B API 키를 로컬 스토리지에 저장
+ */
+export const saveG2BApiKey = (apiKey: string): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(G2B_API_KEY_STORAGE_KEY, apiKey);
+  }
+};
+
+/**
+ * 로컬 스토리지에서 G2B API 키 가져오기
+ */
+export const getG2BApiKey = (): string | null => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(G2B_API_KEY_STORAGE_KEY);
+  }
+  return null;
+};
+
+/**
+ * G2B API 키 삭제
+ */
+export const removeG2BApiKey = (): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(G2B_API_KEY_STORAGE_KEY);
+  }
+};
+
+/**
+ * G2B 리서치 사용 여부 저장
+ */
+export const saveUseG2BResearch = (useG2B: boolean): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(USE_G2B_RESEARCH_KEY, String(useG2B));
+  }
+};
+
+/**
+ * G2B 리서치 사용 여부 가져오기
+ */
+export const getUseG2BResearch = (): boolean => {
+  if (typeof window !== 'undefined') {
+    const value = localStorage.getItem(USE_G2B_RESEARCH_KEY);
+    return value === 'true';
   }
   return false;
 };

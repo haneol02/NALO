@@ -220,6 +220,7 @@ export default function ApiKeyInput({ onApiKeyChange }: ApiKeyInputProps) {
     }
   };
 
+
   if (hasStoredKey && !isEditing) {
     return (
       <div className="space-y-3">
@@ -307,6 +308,7 @@ export default function ApiKeyInput({ onApiKeyChange }: ApiKeyInputProps) {
             </>
           )}
         </div>
+
       </div>
     );
   }

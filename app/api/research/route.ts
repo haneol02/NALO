@@ -216,82 +216,71 @@ function calculateRelevanceScore(result: any, originalTopic: string, searchKeywo
   const summary = result.summary?.toLowerCase() || result.mainPage?.summary?.toLowerCase() || '';
   const content = `${title} ${summary}`;
   const topicLower = originalTopic.toLowerCase();
+  const keywordLower = searchKeyword.toLowerCase();
 
-  // 1. 원본 주제와의 직접적인 관련성 (40점) - 가장 중요
-  const topicWords = topicLower.split(/\s+/).filter(w => w.length > 1);
-  const matchedTopicWords = topicWords.filter(word =>
-    title.includes(word) || summary.includes(word)
-  );
-  score += (matchedTopicWords.length / topicWords.length) * 40;
+  // 기본 점수: 검색 결과가 있다는 것 자체에 20점
+  score += 20;
 
-  // 2. 제목에 검색 키워드 포함 여부 (25점)
-  const keywordParts = searchKeyword.toLowerCase().split(' ');
-  keywordParts.forEach(part => {
-    if (part.length > 2 && title.includes(part)) {
-      score += 25 / keywordParts.length;
-    }
-  });
+  // 1. 검색 키워드와의 관련성 (30점) - 검색어로 찾았으니 기본적으로 관련있음
+  const keywordParts = keywordLower.split(/[\s]+/).filter(w => w.length > 1);
+  const matchedInTitle = keywordParts.filter(part => title.includes(part)).length;
+  const matchedInSummary = keywordParts.filter(part => summary.includes(part)).length;
 
-  // 3. 요약에 검색 키워드 포함 여부 (15점)
-  keywordParts.forEach(part => {
-    if (part.length > 2 && summary.includes(part)) {
-      score += 15 / keywordParts.length;
-    }
-  });
+  if (matchedInTitle > 0) {
+    score += 20; // 제목에 포함되면 높은 점수
+  }
+  if (matchedInSummary > 0) {
+    score += 10; // 요약에 포함되면 추가 점수
+  }
 
-  // 4. 관련 키워드 포함 여부 (10점)
+  // 2. 원본 주제와의 관련성 (25점)
+  const topicWords = topicLower.split(/[\s]+/).filter(w => w.length > 1);
+  if (topicWords.length > 0) {
+    const matchedTopicWords = topicWords.filter(word =>
+      title.includes(word) || summary.includes(word)
+    );
+    score += (matchedTopicWords.length / topicWords.length) * 25;
+  } else {
+    // 주제 단어가 없으면 기본 점수
+    score += 15;
+  }
+
+  // 3. 관련 키워드 포함 여부 (15점)
   const relevantKeywords = [
     'technology', '기술', 'software', '소프트웨어', 'platform', '플랫폼',
-    'service', '서비스', 'system', '시스템', 'application', '애플리케이션',
-    'tool', '도구', 'solution', '솔루션', 'collaboration', '협업'
+    'service', '서비스', 'system', '시스템', 'application', '애플리케이션', '앱',
+    'tool', '도구', 'solution', '솔루션', 'collaboration', '협업',
+    'ai', 'artificial intelligence', '인공지능', 'machine learning', '머신러닝',
+    'data', '데이터', 'analytics', '분석', 'digital', '디지털'
   ];
   const matchedKeywords = relevantKeywords.filter(k => content.includes(k)).length;
-  score += Math.min(10, matchedKeywords * 2);
+  score += Math.min(15, matchedKeywords * 3);
 
-  // 5. 콘텐츠 품질 (10점)
+  // 4. 콘텐츠 품질 (10점)
   const contentLength = summary.length;
-  if (contentLength > 500) score += 10;
-  else if (contentLength > 200) score += 5;
-  else if (contentLength > 50) score += 2;
+  if (contentLength > 300) score += 10;
+  else if (contentLength > 100) score += 7;
+  else if (contentLength > 30) score += 4;
 
   return Math.min(100, Math.round(score));
 }
 
 // 검색 결과 관련성 필터링 함수
 function isRelevantResult(result: any, originalTopic: string, searchKeyword: string): boolean {
-  if (!result?.found) return false;
+  console.log(`[DEBUG] isRelevantResult 호출 - 키워드: ${searchKeyword}`);
+  console.log(`[DEBUG] result.found:`, result?.found);
+
+  if (!result?.found) {
+    console.log(`[FILTER] 검색 결과 없음 (키워드: ${searchKeyword})`);
+    return false;
+  }
 
   const title = result.title?.toLowerCase() || result.mainPage?.title?.toLowerCase() || '';
-  const summary = result.summary?.toLowerCase() || result.mainPage?.summary?.toLowerCase() || '';
-  const content = `${title} ${summary}`;
+  console.log(`[DEBUG] 제목:`, title);
 
-  // 부적절한 카테고리 키워드들 (음반, 영화, 소설, 인물 등)
-  const irrelevantKeywords = [
-    'album', '음반', 'movie', '영화', 'film', '소설', 'novel', 'book', '도서',
-    'singer', '가수', 'actor', '배우', 'musician', '음악가', 'artist', '예술가',
-    'song', '노래', 'track', '곡', 'single', 'EP', 'LP',
-    'biography', '전기', 'autobiography', '자서전',
-    'fictional', '가상의', 'character', '캐릭터', 'comic', '만화',
-    '드라마', 'drama', 'series', '시리즈', 'TV', 'television'
-  ];
-
-  // 부적절한 키워드가 포함된 경우
-  const hasIrrelevantContent = irrelevantKeywords.some(keyword => content.includes(keyword));
-  if (hasIrrelevantContent) {
-    console.log(`[FILTER] 부적절한 결과 제외: "${title}" (키워드: ${searchKeyword})`);
-    return false;
-  }
-
-  // 관련성 점수를 계산하여 일정 점수 이상만 통과
+  // 필터링 임시 비활성화 - 모든 결과 허용
   const relevanceScore = calculateRelevanceScore(result, originalTopic, searchKeyword);
-  const minScore = 30; // 최소 30점 이상
-
-  if (relevanceScore < minScore) {
-    console.log(`[FILTER] 관련성 점수 낮음 (${relevanceScore}점): "${title}" (키워드: ${searchKeyword})`);
-    return false;
-  }
-
-  console.log(`[PASS] 관련성 점수 ${relevanceScore}점: "${title}" (키워드: ${searchKeyword})`);
+  console.log(`[PASS - 필터링 비활성화] 관련성 점수 ${relevanceScore}점: "${title}" (키워드: ${searchKeyword})`);
   return true;
 }
 
@@ -459,7 +448,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Wikipedia와 Perplexity 결과 기다리기
+    // Wikipedia, Perplexity 결과 기다리기
     const apiResults = await Promise.all(promises);
     console.log(`✅ 검색 완료: ${apiResults.length}개 API 호출 완료 (Wikipedia + Perplexity)`);
     console.log(`✅ OpenAlex 순차 검색 완료: ${openalexResults.length}개`);
@@ -492,12 +481,21 @@ export async function POST(req: NextRequest) {
           console.log(`❌ Perplexity 리서치 실패:`, result.error);
         }
       } else if (result.source.startsWith('wikipedia_')) {
+        console.log(`[DEBUG] Wikipedia 결과 처리 중 - 키워드: ${result.keyword}`);
+        console.log(`[DEBUG] result.data:`, result.data ? 'O' : 'X');
+        console.log(`[DEBUG] result.data.success:`, result.data?.success);
+        console.log(`[DEBUG] result.data.data:`, result.data?.data ? 'O' : 'X');
+
         if (result.data && result.data.success && result.data.data) {
           const data = result.data.data;
           const title = data.title?.toLowerCase() || data.mainPage?.title?.toLowerCase() || '';
+          console.log(`[DEBUG] Wikipedia 제목: ${title}`);
 
           // 중복 체크 및 관련성 필터링
-          if (title && !seenWikipediaTitles.has(title) && isRelevantResult(data, topic, result.keyword)) {
+          const isDuplicate = seenWikipediaTitles.has(title);
+          console.log(`[DEBUG] 중복 여부: ${isDuplicate}`);
+
+          if (title && !isDuplicate && isRelevantResult(data, topic, result.keyword)) {
             seenWikipediaTitles.add(title);
             wikipediaResults.push({
               keyword: result.keyword,
@@ -505,7 +503,12 @@ export async function POST(req: NextRequest) {
               relevanceScore: calculateRelevanceScore(data, topic, result.keyword)
             });
             allWikipediaData.push(data);
+            console.log(`[DEBUG] ✅ Wikipedia 결과 추가됨`);
+          } else {
+            console.log(`[DEBUG] ❌ Wikipedia 결과 제외됨 (title: ${!!title}, duplicate: ${isDuplicate})`);
           }
+        } else {
+          console.log(`[DEBUG] ❌ Wikipedia API 응답 구조 오류`);
         }
       }
     });
@@ -550,10 +553,19 @@ export async function POST(req: NextRequest) {
     if (openalexResults.length > 0) {
       // 논문 수와 최신성을 고려하여 OpenAlex 결과 선택
       const scoredResults = openalexResults.map(r => {
-        const paperCount = r.data.papers?.length || 0;
-        const recentPapers = r.data.papers?.filter((p: any) =>
+        console.log(`[DEBUG] OpenAlex 결과 구조 - 키워드: ${r.keyword}`);
+        console.log(`[DEBUG] r.data:`, r.data ? 'O' : 'X');
+        console.log(`[DEBUG] r.data.data:`, r.data?.data ? 'O' : 'X');
+        console.log(`[DEBUG] r.data.data.papers:`, r.data?.data?.papers?.length || 0);
+
+        // 올바른 경로로 papers 접근
+        const papers = r.data?.data?.papers || r.data?.papers || [];
+        const paperCount = papers.length;
+        const recentPapers = papers.filter((p: any) =>
           p.year && p.year >= new Date().getFullYear() - 3
-        ).length || 0;
+        ).length;
+
+        console.log(`[DEBUG] 논문 수: ${paperCount}, 최근 논문: ${recentPapers}`);
 
         // 논문 수(70%) + 최근 논문 비중(30%)
         const score = (paperCount * 0.7) + (recentPapers * 0.3);
@@ -562,7 +574,7 @@ export async function POST(req: NextRequest) {
       });
 
       scoredResults.sort((a, b) => b.qualityScore - a.qualityScore);
-      bestOpenalexData = scoredResults[0]?.data;
+      bestOpenalexData = scoredResults[0]?.data?.data || scoredResults[0]?.data;
 
       console.log(`OpenAlex 결과 상위 3개 점수: ${scoredResults.slice(0, 3).map(r =>
         `${r.keyword}: ${r.qualityScore.toFixed(1)}점`

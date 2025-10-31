@@ -170,6 +170,7 @@ export default function ResearchOptionModal({
               </div>
             </div>
           </div>
+
         </div>
 
         {/* 안내 메시지 */}

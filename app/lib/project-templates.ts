@@ -397,7 +397,19 @@ export function createIdeaPlanPrompt(idea: SimpleIdeaFormat, researchData?: any)
       }
       contextParts.push(`최근 논문 수: ${academic.papers?.length || 0}개`);
     }
-    
+
+    // Perplexity 웹 리서치 정보 추가
+    if (sources?.perplexity?.success && sources.perplexity.data) {
+      const perplexity = sources.perplexity.data;
+      if (perplexity.answer) {
+        contextParts.push(`웹 리서치 인사이트:\n${perplexity.answer.substring(0, 800)}...`);
+      }
+      if (perplexity.citations && perplexity.citations.length > 0) {
+        const citationUrls = perplexity.citations.slice(0, 3).join(', ');
+        contextParts.push(`참고 자료: ${citationUrls}`);
+      }
+    }
+
     // 분석 결과 추가
     if (analysis) {
       if (analysis.marketSize) contextParts.push(`시장 규모: ${analysis.marketSize}`);

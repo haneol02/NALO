@@ -6,17 +6,22 @@ import { GraduationCap, ChevronDown, ChevronUp } from 'lucide-react';
 interface AcademicSectionProps {
   data: any[];
   isIncluded: boolean;
+  searchKeywords?: string[];
 }
 
-export default function AcademicSection({ data, isIncluded }: AcademicSectionProps) {
+export default function AcademicSection({ data, isIncluded, searchKeywords }: AcademicSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  if (!isIncluded || !data || data.length === 0) {
+  if (!isIncluded) {
     return null;
   }
 
   const successfulResults = Array.isArray(data) ? data.filter((r: any) => r?.success && r?.data?.papers?.length > 0) : [];
   const totalPapers = successfulResults.reduce((sum: number, r: any) => sum + (r?.data?.papers?.length || 0), 0);
+
+  if (successfulResults.length === 0) {
+    return null;
+  }
 
   return (
     <div className="bg-white border-2 border-blue-200 rounded-xl p-4 sm:p-6 mb-6">
@@ -44,6 +49,20 @@ export default function AcademicSection({ data, isIncluded }: AcademicSectionPro
 
       {isExpanded && (
         <div className="mt-6 space-y-4">
+          {/* 검색 키워드 표시 */}
+          {searchKeywords && searchKeywords.length > 0 && (
+            <div className="bg-blue-100 rounded-lg p-3 border border-blue-300">
+              <p className="text-xs font-semibold text-blue-800 mb-2">사용된 검색 키워드:</p>
+              <div className="flex flex-wrap gap-2">
+                {searchKeywords.map((keyword, idx) => (
+                  <span key={idx} className="px-2 py-1 bg-white text-blue-700 rounded text-xs font-medium border border-blue-200">
+                    {keyword}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {successfulResults.map((result, index) => (
             <div key={index} className="bg-blue-50 rounded-lg p-4 border border-blue-200">
               <div className="mb-3">

@@ -140,7 +140,7 @@ export default function HomePage() {
     setIsResearching(true);
     setError(null);
     setResearchData(null);
-    setResearchLogs([]);
+    setCurrentResearchMessage('리서치 진행 중...');
 
     try {
       const apiKey = getApiKey();
@@ -154,26 +154,6 @@ export default function HomePage() {
         includeAcademic: true,
         includePerplexity: false
       };
-
-      // 랜덤 리서치 메시지 배열
-      const researchMessages = [
-        '📊 주제를 분석하고 있어요...',
-        '🔍 최적의 키워드를 찾고 있어요...',
-        '📚 Wikipedia에서 정보를 수집 중이에요...',
-        '📄 최신 논문을 검색하고 있어요...',
-        '🌐 웹에서 관련 정보를 찾고 있어요...',
-        '🧠 AI가 데이터를 분석 중이에요...',
-        '✨ 인사이트를 도출하고 있어요...',
-        '🎯 핵심 정보를 정리하고 있어요...',
-        '⚡ 거의 다 됐어요...',
-        '🚀 마무리 작업 중이에요...'
-      ];
-
-      // 랜덤 메시지 표시 인터벌
-      const messageInterval = setInterval(() => {
-        const randomMessage = researchMessages[Math.floor(Math.random() * researchMessages.length)];
-        setCurrentResearchMessage(randomMessage);
-      }, 2000); // 2초마다 메시지 변경
 
       // Perplexity API 키 추가
       if (researchOptions.includePerplexity) {
@@ -197,9 +177,6 @@ export default function HomePage() {
         }),
       });
 
-      // 인터벌 정리
-      clearInterval(messageInterval);
-
       if (!researchResponse.ok) {
         throw new Error('리서치 API 호출에 실패했습니다.');
       }
@@ -214,7 +191,6 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('리서치 오류:', error);
-      clearInterval(messageInterval);
       setCurrentResearchMessage('❌ 리서치 중 오류 발생');
       setError(error instanceof Error ? error.message : '리서치 중 오류가 발생했습니다.');
     } finally {
