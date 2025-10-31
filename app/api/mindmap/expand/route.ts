@@ -121,7 +121,8 @@ function extractSuggestionsFromText(text: string, selectedNode: any) {
           description: '실시간으로 상태를 모니터링하고 경고를 전송하는 시스템',
           priority: 'high',
           complexity: 'moderate',
-          value: '안전성 강화 및 사고 예방'
+          value: '안전성 강화 및 사고 예방',
+          color: 'red'
         });
       }
 
@@ -132,7 +133,8 @@ function extractSuggestionsFromText(text: string, selectedNode: any) {
           description: '정기적인 교육 및 훈련을 제공하는 서비스',
           priority: 'medium',
           complexity: 'simple',
-          value: '인식 제고 및 능력 향상'
+          value: '인식 제고 및 능력 향상',
+          color: 'green'
         });
       }
 
@@ -143,20 +145,23 @@ function extractSuggestionsFromText(text: string, selectedNode: any) {
           description: '체계적인 안전 점검 및 관리 기능',
           priority: 'high',
           complexity: 'moderate',
-          value: '예방적 관리를 통한 안전 확보'
+          value: '예방적 관리를 통한 안전 확보',
+          color: 'orange'
         });
       }
-      
+
       // 여전히 없으면 기본 키워드로
       if (suggestions.length === 0) {
-        keywords.slice(0, 3).forEach((keyword) => {
+        const defaultColors = ['blue', 'green', 'purple'];
+        keywords.slice(0, 3).forEach((keyword, index) => {
           suggestions.push({
             label: `${keyword} 관련 기능`,
             type: 'node',
             description: `${keyword}와 관련된 구체적인 구현 방안`,
             priority: 'medium',
             complexity: 'moderate',
-            value: `${keyword} 개선을 통한 가치 창출`
+            value: `${keyword} 개선을 통한 가치 창출`,
+            color: defaultColors[index % defaultColors.length]
           });
         });
       }
@@ -191,13 +196,13 @@ function getDefaultSuggestions(selectedNode: any) {
   const nodeType = selectedNode.data.type;
   const fallbackSuggestions = {
     'root': [
-      { label: '핵심 기능 정의', type: 'node', description: '프로젝트의 주요 기능을 구체화', priority: 'high', complexity: 'moderate', value: '프로젝트 방향성 확립' },
-      { label: '사용자 요구사항', type: 'node', description: '대상 사용자의 핵심 니즈 분석', priority: 'high', complexity: 'simple', value: '사용자 중심 설계' },
-      { label: '기술적 제약사항', type: 'node', description: '구현 시 고려해야 할 기술적 한계', priority: 'medium', complexity: 'complex', value: '현실적 개발 계획' }
+      { label: '핵심 기능 정의', type: 'node', description: '프로젝트의 주요 기능을 구체화', priority: 'high', complexity: 'moderate', value: '프로젝트 방향성 확립', color: 'blue' },
+      { label: '사용자 요구사항', type: 'node', description: '대상 사용자의 핵심 니즈 분석', priority: 'high', complexity: 'simple', value: '사용자 중심 설계', color: 'pink' },
+      { label: '기술적 제약사항', type: 'node', description: '구현 시 고려해야 할 기술적 한계', priority: 'medium', complexity: 'complex', value: '현실적 개발 계획', color: 'purple' }
     ],
     'node': [
-      { label: '구체적 내용', type: 'node', description: '세부적인 내용과 설명', priority: 'medium', complexity: 'simple', value: '명확한 구조화' },
-      { label: '추가 사항', type: 'node', description: '보완이 필요한 추가 내용', priority: 'medium', complexity: 'simple', value: '완성도 향상' }
+      { label: '구체적 내용', type: 'node', description: '세부적인 내용과 설명', priority: 'medium', complexity: 'simple', value: '명확한 구조화', color: 'green' },
+      { label: '추가 사항', type: 'node', description: '보완이 필요한 추가 내용', priority: 'medium', complexity: 'simple', value: '완성도 향상', color: 'orange' }
     ]
   };
 
@@ -345,10 +350,23 @@ ${selectedNode.data.description ? `- **설명 중심 확장**: "${selectedNode.d
       "description": "구체적이고 실용적인 설명",
       "priority": "high|medium|low",
       "complexity": "simple|moderate|complex",
-      "value": "핵심 가치 제안"
+      "value": "핵심 가치 제안",
+      "color": "gray|red|orange|yellow|green|blue|purple|pink"
     }
   ]
 }
+
+**색상 선택 가이드:**
+- gray: 일반적/중립적 내용
+- red: 중요/경고/문제점
+- orange: 주의/개선사항
+- yellow: 아이디어/창의적 제안
+- green: 성공/완료/긍정적 요소
+- blue: 정보/데이터/기술적 내용
+- purple: 혁신/고급/전략적 내용
+- pink: 사용자 중심/경험/디자인
+
+각 아이디어의 성격에 맞는 색상을 자동으로 지정하여 시각적으로 구분하기 쉽게 해주세요.
 `;
 
     console.log('=== OpenAI API 호출 시작 ===');
@@ -510,14 +528,21 @@ ${mode === 'simple' ?
       analysis = parsed.analysis || null;
       
       // 품질 검증: 각 제안의 필수 필드 확인
-      suggestions = suggestions.map((suggestion: any) => ({
-        label: suggestion.label || '제안 아이디어',
-        type: 'node',
-        description: suggestion.description || '상세 설명 필요',
-        priority: suggestion.priority || 'medium',
-        complexity: suggestion.complexity || 'moderate',
-        value: suggestion.value || '가치 분석 필요'
-      }));
+      suggestions = suggestions.map((suggestion: any, index: number) => {
+        // 색상이 없으면 기본 색상 배열에서 순서대로 할당
+        const defaultColors = ['blue', 'green', 'purple', 'orange', 'pink', 'yellow'];
+        const defaultColor = defaultColors[index % defaultColors.length];
+
+        return {
+          label: suggestion.label || '제안 아이디어',
+          type: 'node',
+          description: suggestion.description || '상세 설명 필요',
+          priority: suggestion.priority || 'medium',
+          complexity: suggestion.complexity || 'moderate',
+          value: suggestion.value || '가치 분석 필요',
+          color: suggestion.color || defaultColor
+        };
+      });
       
     } catch (parseError) {
       console.error('JSON 파싱 오류:', parseError);

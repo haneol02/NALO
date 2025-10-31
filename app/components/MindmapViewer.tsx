@@ -19,8 +19,9 @@ import ReactFlow, {
   Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Plus, Lightbulb, FileText, Sparkles, Target, Wrench, Settings, X, ChevronUp, ChevronDown, Edit3, Trash2, Eye, ArrowUp, ArrowDown, Save, Upload, Download } from 'lucide-react';
+import { Plus, Lightbulb, FileText, Sparkles, Target, Wrench, Settings, X, ChevronUp, ChevronDown, Edit3, Trash2, Eye, ArrowUp, ArrowDown, Save, Upload, Download, MessageSquare } from 'lucide-react';
 import { getApiKey } from '@/app/lib/apiKeyStorage';
+import MindmapChat from './MindmapChat';
 
 // 노드 타입 정의
 interface MindmapNodeData {
@@ -467,6 +468,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
   const [newNodeIds, setNewNodeIds] = useState<Set<string>>(new Set());
   const [fixedBottomPosition, setFixedBottomPosition] = useState<number | null>(null);
   const floatingPanelRef = useRef<HTMLDivElement>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // 개선된 노드 배치 알고리즘 - 확장 범위 순으로 자연스럽게 배치
   const findNonOverlappingPosition = useCallback((
@@ -1097,10 +1099,11 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
   }, [selectedNodeId, nodes, setNodes, setEdges, saveToHistory]);
 
   // AI 아이디어 확장 (실제 API 호출)
-  const expandWithAI = useCallback(async () => {
-    if (!selectedNodeId || isAiExpanding) return;
+  const expandWithAI = useCallback(async (targetNodeId?: string) => {
+    const nodeId = targetNodeId || selectedNodeId;
+    if (!nodeId || isAiExpanding) return;
 
-    const selectedNode = nodes.find(n => n.id === selectedNodeId);
+    const selectedNode = nodes.find(n => n.id === nodeId);
     if (!selectedNode) return;
 
     setIsAiExpanding(true);
@@ -1264,6 +1267,195 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
       setIsAiExpanding(false);
     }
   }, [selectedNodeId, nodes, setNodes, setEdges, isAiExpanding, aiExpandMode, aiExpandCategory, aiExpandPrompt, aiExpandScope, aiExpandCount, aiDetermineCount, showAutoSetupOption, saveToHistory, findNonOverlappingPosition, reactFlowInstance, initialPrompt, edges, getEdgeStyle]);
+
+  // 채팅 명령어 처리 (현재 선택된 노드 ID를 추적)
+  const handleChatCommand = useCallback(async (command: any, currentSelectedId?: string) => {
+    console.log('채팅 명령어 수신:', command);
+
+    // 현재 선택된 노드 ID (파라미터로 받거나 state 사용)
+    const activeNodeId = currentSelectedId || selectedNodeId;
+
+    try {
+      switch (command.action) {
+        case 'select_node': {
+          const nodeLabel = command.params?.nodeLabel;
+          if (!nodeLabel) {
+            alert('노드 이름이 필요합니다.');
+            return null;
+          }
+
+          // 노드 이름으로 검색 (부분 매칭)
+          let targetNode = nodes.find(n =>
+            n.data.label.toLowerCase().includes(nodeLabel.toLowerCase())
+          );
+
+          // "메인", "루트", "root" 키워드로 루트 노드 찾기
+          if (!targetNode) {
+            const rootKeywords = ['메인', '루트', 'root', 'main'];
+            const isRootKeyword = rootKeywords.some(keyword =>
+              nodeLabel.toLowerCase().includes(keyword)
+            );
+
+            if (isRootKeyword) {
+              targetNode = nodes.find(n => n.data.type === 'root');
+            }
+          }
+
+          if (!targetNode) {
+            alert(`"${nodeLabel}" 노드를 찾을 수 없습니다.`);
+            return null;
+          }
+
+          // 노드 선택
+          setSelectedNodeId(targetNode.id);
+
+          // 해당 노드로 화면 이동
+          if (reactFlowInstance) {
+            reactFlowInstance.setCenter(
+              targetNode.position.x + 100,
+              targetNode.position.y + 50,
+              { zoom: 1.2, duration: 500 }
+            );
+          }
+
+          // 선택된 노드 ID 반환 (다음 명령어에서 사용)
+          return targetNode.id;
+        }
+
+        case 'add_node': {
+          console.log('=== add_node 실행 ===');
+          console.log('activeNodeId:', activeNodeId);
+          console.log('command.params:', command.params);
+
+          if (!activeNodeId) {
+            alert('노드를 선택해주세요.');
+            return null;
+          }
+          const selectedNode = nodes.find(n => n.id === activeNodeId);
+          if (!selectedNode) {
+            console.log('선택된 노드를 찾을 수 없음');
+            return null;
+          }
+
+          console.log('선택된 노드:', selectedNode.data.label);
+
+          saveToHistory();
+
+          const newNodes: Node[] = [];
+          const newEdges: Edge[] = [];
+
+          // nodes 배열이 있으면 각 노드를 생성, 없으면 count 사용
+          const nodesToCreate = command.params?.nodes || [];
+          const count = nodesToCreate.length || command.params?.count || 1;
+
+          console.log('생성할 노드 개수:', count);
+          console.log('노드 정보:', nodesToCreate);
+
+          for (let i = 0; i < count; i++) {
+            const newNodeId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${i}`;
+            const basePosition = {
+              x: selectedNode.position.x,
+              y: selectedNode.position.y + 150
+            };
+            const newPosition = findNonOverlappingPosition(basePosition, [...nodes, ...newNodes], i, count);
+
+            // nodes 배열에서 정보 가져오기
+            const nodeInfo = nodesToCreate[i] || {};
+
+            const newNode: Node = {
+              id: newNodeId,
+              type: 'custom',
+              position: newPosition,
+              data: {
+                label: nodeInfo.label || command.params?.label || `새 노드 ${i + 1}`,
+                type: 'node',
+                description: nodeInfo.description || command.params?.description,
+                color: nodeInfo.color || command.params?.color || 'gray',
+                isNewNode: true
+              },
+            };
+
+            // 부모 노드 ID 확인 및 엣지 스타일 가져오기
+            const parentNodeId = activeNodeId;
+            const edgeStyle = getEdgeStyle(parentNodeId);
+
+            console.log(`엣지 생성: ${parentNodeId} -> ${newNodeId}`);
+
+            const newEdge: Edge = {
+              id: `${parentNodeId}-${newNodeId}`,
+              source: parentNodeId,
+              target: newNodeId,
+              type: 'smoothstep',
+              style: edgeStyle,
+              animated: false,
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: edgeStyle.stroke,
+              },
+            };
+
+            newNodes.push(newNode);
+            newEdges.push(newEdge);
+          }
+
+          setNodes((nds) => [...nds, ...newNodes]);
+          setEdges((eds) => [...eds, ...newEdges]);
+
+          console.log('노드 생성 완료:', newNodes.length, '개');
+          return activeNodeId;
+        }
+
+        case 'edit_node': {
+          if (!activeNodeId) {
+            alert('노드를 선택해주세요.');
+            return null;
+          }
+          saveToHistory();
+          setNodes(nds => nds.map(n =>
+            n.id === activeNodeId
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    label: command.params?.label || n.data.label,
+                    description: command.params?.description !== undefined ? command.params.description : n.data.description,
+                    color: command.params?.color || n.data.color
+                  }
+                }
+              : n
+          ));
+          return activeNodeId;
+        }
+
+        case 'delete_node': {
+          if (!activeNodeId) {
+            alert('노드를 선택해주세요.');
+            return null;
+          }
+          const selectedNode = nodes.find(n => n.id === activeNodeId);
+          if (selectedNode?.data.type === 'root') {
+            alert('루트 노드는 삭제할 수 없습니다.');
+            return null;
+          }
+          saveToHistory();
+          setNodes((nds) => nds.filter(node => node.id !== activeNodeId));
+          setEdges((eds) => eds.filter(edge =>
+            edge.source !== activeNodeId && edge.target !== activeNodeId
+          ));
+          setSelectedNodeId(null);
+          return null;
+        }
+
+        default:
+          console.warn('알 수 없는 명령어:', command.action);
+          return activeNodeId;
+      }
+    } catch (error) {
+      console.error('명령어 처리 오류:', error);
+      alert('명령어 실행 중 오류가 발생했습니다.');
+      return null;
+    }
+  }, [selectedNodeId, nodes, setNodes, setEdges, saveToHistory, findNonOverlappingPosition, getEdgeStyle, expandWithAI, reactFlowInstance]);
 
   // 자동 설정 기능 (메인 노드 전용)
   const handleAutoSetup = useCallback(async () => {
@@ -2491,10 +2683,31 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
         </div>
       )}
 
+      {/* AI 채팅 어시스턴트 */}
+      <MindmapChat
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        onCommand={handleChatCommand}
+        selectedNodeId={selectedNodeId}
+        nodes={nodes}
+        rootLabel={nodes.find(n => n.data.type === 'root')?.data.label || initialPrompt}
+      />
+
+      {/* 채팅 버튼 - 우측 하단 */}
+      {!isChatOpen && (
+        <button
+          onClick={() => setIsChatOpen(true)}
+          className="fixed right-4 bottom-4 z-40 bg-blue-500 hover:bg-blue-600 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110"
+          title="AI 어시스턴트"
+        >
+          <MessageSquare className="w-6 h-6" />
+        </button>
+      )}
+
       {/* 브레인스토밍 영역 - 헤더 제외한 전체 화면 */}
       <div className="w-full h-full">
-        <div 
-          ref={reactFlowWrapper} 
+        <div
+          ref={reactFlowWrapper}
           className="w-full h-full"
         >
           <ReactFlow
