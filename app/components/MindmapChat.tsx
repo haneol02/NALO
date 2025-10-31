@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, X, MessageSquare, Loader2 } from 'lucide-react';
-import { getApiKey } from '@/app/lib/apiKeyStorage';
+import { Send, X, MessageSquare, Loader2, Globe } from 'lucide-react';
+import { getApiKey, getPerplexityApiKey } from '@/app/lib/apiKeyStorage';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -34,6 +34,7 @@ export default function MindmapChat({ isOpen, onClose, onCommand, selectedNodeId
   ]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [usePerplexity, setUsePerplexity] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -96,6 +97,20 @@ export default function MindmapChat({ isOpen, onClose, onCommand, selectedNodeId
         return;
       }
 
+      // Perplexity API 키 확인
+      const perplexityApiKey = usePerplexity ? getPerplexityApiKey() : null;
+
+      // Perplexity 사용 시 API 키 확인
+      if (usePerplexity && !perplexityApiKey) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === assistantMessageId
+            ? { ...msg, content: 'Perplexity API 키가 설정되지 않았습니다. 홈 화면에서 Perplexity API 키를 입력해주세요.' }
+            : msg
+        ));
+        setIsStreaming(false);
+        return;
+      }
+
       // 스트리밍 API 호출
       const response = await fetch('/api/mindmap/chat', {
         method: 'POST',
@@ -108,7 +123,9 @@ export default function MindmapChat({ isOpen, onClose, onCommand, selectedNodeId
           apiKey,
           selectedNodeId,
           nodes,
-          rootLabel
+          rootLabel,
+          usePerplexity,
+          perplexityApiKey
         }),
       });
 
@@ -163,10 +180,16 @@ export default function MindmapChat({ isOpen, onClose, onCommand, selectedNodeId
                 if (command.commands && Array.isArray(command.commands)) {
                   // 여러 명령어 순차 실행
                   let currentNodeId: string | undefined = undefined;
-                  for (const cmd of command.commands) {
+                  for (let i = 0; i < command.commands.length; i++) {
+                    const cmd = command.commands[i];
+                    console.log(`[명령어 ${i + 1}/${command.commands.length}] 실행:`, cmd.action);
                     currentNodeId = await onCommand(cmd, currentNodeId);
-                    // 각 명령어 사이에 대기 시간
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    console.log(`[명령어 ${i + 1}/${command.commands.length}] 완료, 반환 ID:`, currentNodeId);
+
+                    // 각 명령어 사이에 대기 시간 (state 업데이트 완료 보장)
+                    if (i < command.commands.length - 1) {
+                      await new Promise(resolve => setTimeout(resolve, 800));
+                    }
                   }
                 } else {
                   // 단일 명령어 실행
@@ -309,7 +332,21 @@ export default function MindmapChat({ isOpen, onClose, onCommand, selectedNodeId
       </div>
 
       {/* 입력 영역 */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-gray-100 bg-white/80">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-gray-100 bg-white/80 space-y-2">
+        {/* Perplexity 웹검색 옵션 */}
+        <label className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-800 transition-colors cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={usePerplexity}
+            onChange={(e) => setUsePerplexity(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-gray-300 text-blue-500 focus:ring-2 focus:ring-blue-400 focus:ring-offset-0 transition-all"
+            disabled={isStreaming}
+          />
+          <Globe className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+          <span className="font-medium">Perplexity 웹검색 사용</span>
+          <span className="text-gray-400">(최신 정보 검색)</span>
+        </label>
+
         <div className="flex gap-2">
           <textarea
             ref={inputRef}

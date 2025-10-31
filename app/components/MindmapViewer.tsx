@@ -20,7 +20,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Plus, Lightbulb, FileText, Sparkles, Target, Wrench, Settings, X, ChevronUp, ChevronDown, Edit3, Trash2, Eye, ArrowUp, ArrowDown, Save, Upload, Download, MessageSquare } from 'lucide-react';
-import { getApiKey } from '@/app/lib/apiKeyStorage';
+import { getApiKey, getPerplexityApiKey } from '@/app/lib/apiKeyStorage';
 import MindmapChat from './MindmapChat';
 
 // 노드 타입 정의
@@ -177,15 +177,11 @@ const CustomNode = ({
     // Shift+Enter는 기본 동작(줄넘김) 허용
   };
   const getNodeIcon = () => {
-    switch (data.type) {
-      case 'root': return <Target className="w-4 h-4" />;
-      case 'idea': return <Lightbulb className="w-4 h-4" />;
-      case 'feature': return <Sparkles className="w-4 h-4" />;
-      case 'problem': return <FileText className="w-4 h-4" />;
-      case 'solution': return <Wrench className="w-4 h-4" />;
-      case 'detail': return <Settings className="w-4 h-4" />;
-      default: return <Plus className="w-4 h-4" />;
+    if (data.type === 'root') {
+      return <Target className="w-4 h-4" />;
     }
+    // node 타입은 color에 따라 아이콘 선택
+    return <Lightbulb className="w-4 h-4" />;
   };
 
   const getNodeColor = () => {
@@ -241,17 +237,7 @@ const CustomNode = ({
           {/* 제목 입력 */}
           <div className="flex items-center gap-2">
             <div className="text-blue-600 flex-shrink-0">
-              {(() => {
-                switch (editType) {
-                  case 'root': return <Target className="w-3 h-3" />;
-                  case 'idea': return <Lightbulb className="w-3 h-3" />;
-                  case 'feature': return <Sparkles className="w-3 h-3" />;
-                  case 'problem': return <FileText className="w-3 h-3" />;
-                  case 'solution': return <Wrench className="w-3 h-3" />;
-                  case 'detail': return <Settings className="w-3 h-3" />;
-                  default: return <Plus className="w-3 h-3" />;
-                }
-              })()}
+              {editType === 'root' ? <Target className="w-3 h-3" /> : <Lightbulb className="w-3 h-3" />}
             </div>
             <input
               ref={inputRef}
@@ -447,7 +433,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
   const [isAddingNode, setIsAddingNode] = useState(false);
   const [newNodeText, setNewNodeText] = useState('');
   const [newNodeDescription, setNewNodeDescription] = useState('');
-  const [newNodeType, setNewNodeType] = useState<MindmapNodeData['type']>('idea');
+  const [newNodeType, setNewNodeType] = useState<MindmapNodeData['type']>('node');
   const [isAiExpanding, setIsAiExpanding] = useState(false);
   const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
   const [showAiConfirmModal, setShowAiConfirmModal] = useState(false);
@@ -577,6 +563,12 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // nodes의 최신 상태를 추적하기 위한 ref
+  const nodesRef = useRef(nodes);
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
 
   // 히스토리에 현재 상태 저장
   const saveToHistory = useCallback(() => {
@@ -1075,10 +1067,10 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
   }, [newNodeText, newNodeType, newNodeDescription, selectedNodeId, nodes, setNodes, setEdges, saveToHistory, findNonOverlappingPosition, getEdgeStyle]);
 
 
-  // 노드 삭제
+  // 노드 삭제 (하위 노드 포함)
   const deleteNode = useCallback(() => {
     if (!selectedNodeId) return;
-    
+
     // 루트 노드는 삭제 불가
     const selectedNode = nodes.find(n => n.id === selectedNodeId);
     if (selectedNode?.data.type === 'root') {
@@ -1089,14 +1081,41 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
     // 변경 전 상태 저장
     saveToHistory();
 
-    // 노드와 연결된 엣지 모두 삭제
-    setNodes((nds) => nds.filter(node => node.id !== selectedNodeId));
-    setEdges((eds) => eds.filter(edge => 
-      edge.source !== selectedNodeId && edge.target !== selectedNodeId
+    // 재귀적으로 하위 노드 ID 수집
+    const collectDescendantIds = (nodeId: string): string[] => {
+      const childIds = edges
+        .filter(e => e.source === nodeId)
+        .map(e => e.target);
+
+      const allDescendants = [...childIds];
+      childIds.forEach(childId => {
+        allDescendants.push(...collectDescendantIds(childId));
+      });
+
+      return allDescendants;
+    };
+
+    const nodesToDelete = [selectedNodeId, ...collectDescendantIds(selectedNodeId)];
+    const deleteCount = nodesToDelete.length;
+
+    // 확인 메시지 (하위 노드가 있을 경우)
+    if (deleteCount > 1) {
+      const confirmed = window.confirm(
+        `선택한 노드와 하위 노드 ${deleteCount - 1}개를 모두 삭제하시겠습니까?`
+      );
+      if (!confirmed) return;
+    }
+
+    console.log('삭제할 노드들:', nodesToDelete);
+
+    // 노드와 관련된 모든 엣지 삭제
+    setNodes((nds) => nds.filter(node => !nodesToDelete.includes(node.id)));
+    setEdges((eds) => eds.filter(edge =>
+      !nodesToDelete.includes(edge.source) && !nodesToDelete.includes(edge.target)
     ));
-    
+
     setSelectedNodeId(null);
-  }, [selectedNodeId, nodes, setNodes, setEdges, saveToHistory]);
+  }, [selectedNodeId, nodes, edges, setNodes, setEdges, saveToHistory]);
 
   // AI 아이디어 확장 (실제 API 호출)
   const expandWithAI = useCallback(async (targetNodeId?: string) => {
@@ -1238,10 +1257,10 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
       });
 
       // 레이어 기반 스타일 사용
-      const edgeStyle = getEdgeStyle(selectedNodeId);
+      const edgeStyle = getEdgeStyle(selectedNodeId || '');
       const newEdges: Edge[] = newNodes.map(node => ({
         id: `${selectedNodeId}-${node.id}`,
-        source: selectedNodeId,
+        source: selectedNodeId || '',
         target: node.id,
         type: 'smoothstep',
         style: edgeStyle,
@@ -1269,7 +1288,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
   }, [selectedNodeId, nodes, setNodes, setEdges, isAiExpanding, aiExpandMode, aiExpandCategory, aiExpandPrompt, aiExpandScope, aiExpandCount, aiDetermineCount, showAutoSetupOption, saveToHistory, findNonOverlappingPosition, reactFlowInstance, initialPrompt, edges, getEdgeStyle]);
 
   // 채팅 명령어 처리 (현재 선택된 노드 ID를 추적)
-  const handleChatCommand = useCallback(async (command: any, currentSelectedId?: string) => {
+  const handleChatCommand = useCallback(async (command: any, currentSelectedId?: string): Promise<string | undefined> => {
     console.log('채팅 명령어 수신:', command);
 
     // 현재 선택된 노드 ID (파라미터로 받거나 state 사용)
@@ -1279,31 +1298,60 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
       switch (command.action) {
         case 'select_node': {
           const nodeLabel = command.params?.nodeLabel;
-          if (!nodeLabel) {
-            alert('노드 이름이 필요합니다.');
-            return null;
+          const nodeId = command.params?.nodeId; // 직접 ID를 받을 수도 있음
+
+          if (!nodeLabel && !nodeId) {
+            alert('노드 이름 또는 ID가 필요합니다.');
+            return undefined;
           }
 
-          // 노드 이름으로 검색 (부분 매칭)
-          let targetNode = nodes.find(n =>
-            n.data.label.toLowerCase().includes(nodeLabel.toLowerCase())
-          );
+          let targetNode;
 
-          // "메인", "루트", "root" 키워드로 루트 노드 찾기
-          if (!targetNode) {
-            const rootKeywords = ['메인', '루트', 'root', 'main'];
-            const isRootKeyword = rootKeywords.some(keyword =>
-              nodeLabel.toLowerCase().includes(keyword)
+          // 최신 nodes를 ref에서 가져오기
+          const latestNodes = nodesRef.current;
+          console.log('[select_node] 최신 nodes 개수:', latestNodes.length);
+
+          // ID가 직접 제공된 경우 (방금 생성된 노드)
+          if (nodeId) {
+            // 최신 nodes에서 찾기 시도
+            targetNode = latestNodes.find(n => n.id === nodeId);
+
+            // 여전히 없으면 ID 직접 사용
+            if (!targetNode) {
+              console.log('노드를 state에서 찾지 못함, ID 직접 사용:', nodeId);
+              setSelectedNodeId(nodeId);
+              return nodeId;
+            }
+          } else {
+            // 노드 이름으로 검색 (부분 매칭)
+            console.log('노드 검색 시작:', nodeLabel);
+            console.log('현재 nodes 개수:', latestNodes.length);
+            console.log('모든 노드 이름:', latestNodes.map(n => n.data.label).join(', '));
+
+            targetNode = latestNodes.find(n =>
+              n.data.label.toLowerCase().includes(nodeLabel!.toLowerCase())
             );
 
-            if (isRootKeyword) {
-              targetNode = nodes.find(n => n.data.type === 'root');
-            }
-          }
+            console.log('검색 결과:', targetNode ? targetNode.data.label : '없음');
 
-          if (!targetNode) {
-            alert(`"${nodeLabel}" 노드를 찾을 수 없습니다.`);
-            return null;
+            // "메인", "루트", "root" 키워드로 루트 노드 찾기
+            if (!targetNode) {
+              const rootKeywords = ['메인', '루트', 'root', 'main'];
+              const isRootKeyword = rootKeywords.some(keyword =>
+                nodeLabel!.toLowerCase().includes(keyword)
+              );
+
+              if (isRootKeyword) {
+                targetNode = latestNodes.find(n => n.data.type === 'root');
+                console.log('루트 노드 검색:', targetNode ? '찾음' : '못찾음');
+              }
+            }
+
+            if (!targetNode) {
+              console.error(`"${nodeLabel}" 노드를 찾을 수 없습니다. 사용 가능한 노드:`, latestNodes.map(n => n.data.label));
+              alert(`"${nodeLabel}" 노드를 찾을 수 없습니다.`);
+              return undefined;
+            }
           }
 
           // 노드 선택
@@ -1329,12 +1377,18 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
 
           if (!activeNodeId) {
             alert('노드를 선택해주세요.');
-            return null;
+            return undefined;
           }
-          const selectedNode = nodes.find(n => n.id === activeNodeId);
+
+          // 최신 nodes를 ref에서 가져오기
+          const latestNodes = nodesRef.current;
+          console.log('[add_node] 최신 nodes 개수:', latestNodes.length);
+
+          const selectedNode = latestNodes.find(n => n.id === activeNodeId);
           if (!selectedNode) {
-            console.log('선택된 노드를 찾을 수 없음');
-            return null;
+            console.log('선택된 노드를 찾을 수 없음, ID:', activeNodeId);
+            console.log('사용 가능한 노드 ID:', latestNodes.map(n => n.id).join(', '));
+            return undefined;
           }
 
           console.log('선택된 노드:', selectedNode.data.label);
@@ -1351,23 +1405,41 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
           console.log('생성할 노드 개수:', count);
           console.log('노드 정보:', nodesToCreate);
 
+          // 현재 선택된 노드의 기존 하위 노드 찾기
+          const existingChildren = edges
+            .filter(e => e.source === activeNodeId)
+            .map(e => {
+              const childNode = latestNodes.find(n => n.id === e.target);
+              return childNode?.data.label.toLowerCase();
+            })
+            .filter(Boolean);
+
+          console.log('기존 하위 노드:', existingChildren);
+
           for (let i = 0; i < count; i++) {
+            // nodes 배열에서 정보 가져오기
+            const nodeInfo = nodesToCreate[i] || {};
+            const newLabel = nodeInfo.label || command.params?.label || `새 노드 ${i + 1}`;
+
+            // 중복 검사
+            if (existingChildren.includes(newLabel.toLowerCase())) {
+              console.log(`중복된 노드 건너뛰기: ${newLabel}`);
+              continue;
+            }
+
             const newNodeId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${i}`;
             const basePosition = {
               x: selectedNode.position.x,
               y: selectedNode.position.y + 150
             };
-            const newPosition = findNonOverlappingPosition(basePosition, [...nodes, ...newNodes], i, count);
-
-            // nodes 배열에서 정보 가져오기
-            const nodeInfo = nodesToCreate[i] || {};
+            const newPosition = findNonOverlappingPosition(basePosition, [...latestNodes, ...newNodes], i, count);
 
             const newNode: Node = {
               id: newNodeId,
               type: 'custom',
               position: newPosition,
               data: {
-                label: nodeInfo.label || command.params?.label || `새 노드 ${i + 1}`,
+                label: newLabel,
                 type: 'node',
                 description: nodeInfo.description || command.params?.description,
                 color: nodeInfo.color || command.params?.color || 'gray',
@@ -1398,17 +1470,34 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
             newEdges.push(newEdge);
           }
 
-          setNodes((nds) => [...nds, ...newNodes]);
+          // Promise를 사용하여 state 업데이트 완료 대기
+          await new Promise<void>((resolve) => {
+            setNodes((nds) => {
+              const updated = [...nds, ...newNodes];
+              // 다음 tick에서 resolve
+              setTimeout(() => resolve(), 0);
+              return updated;
+            });
+          });
+
           setEdges((eds) => [...eds, ...newEdges]);
 
           console.log('노드 생성 완료:', newNodes.length, '개');
-          return activeNodeId;
+
+          // 첫 번째 생성된 노드의 ID 반환 (다음 명령어에서 사용 가능)
+          if (newNodes.length > 0) {
+            const firstNodeId = newNodes[0].id;
+            const firstNodeLabel = newNodes[0].data.label;
+            console.log('생성된 첫 번째 노드:', firstNodeLabel, firstNodeId);
+            return firstNodeId;
+          }
+          return activeNodeId || undefined;
         }
 
         case 'edit_node': {
           if (!activeNodeId) {
             alert('노드를 선택해주세요.');
-            return null;
+            return undefined;
           }
           saveToHistory();
           setNodes(nds => nds.map(n =>
@@ -1424,36 +1513,559 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
                 }
               : n
           ));
-          return activeNodeId;
+          return activeNodeId || undefined;
         }
 
         case 'delete_node': {
           if (!activeNodeId) {
             alert('노드를 선택해주세요.');
-            return null;
+            return undefined;
           }
-          const selectedNode = nodes.find(n => n.id === activeNodeId);
+
+          // 최신 nodes와 edges를 ref에서 가져오기
+          const latestNodes = nodesRef.current;
+          const latestEdges = edges;
+
+          const selectedNode = latestNodes.find(n => n.id === activeNodeId);
           if (selectedNode?.data.type === 'root') {
             alert('루트 노드는 삭제할 수 없습니다.');
-            return null;
+            return undefined;
           }
+
           saveToHistory();
-          setNodes((nds) => nds.filter(node => node.id !== activeNodeId));
+
+          // 재귀적으로 하위 노드 ID 수집
+          const collectDescendantIds = (nodeId: string): string[] => {
+            const childIds = latestEdges
+              .filter(e => e.source === nodeId)
+              .map(e => e.target);
+
+            const allDescendants = [...childIds];
+            childIds.forEach(childId => {
+              allDescendants.push(...collectDescendantIds(childId));
+            });
+
+            return allDescendants;
+          };
+
+          const nodesToDelete = [activeNodeId, ...collectDescendantIds(activeNodeId)];
+          console.log('삭제할 노드들:', nodesToDelete);
+
+          // 노드와 관련된 모든 엣지 삭제
+          setNodes((nds) => nds.filter(node => !nodesToDelete.includes(node.id)));
           setEdges((eds) => eds.filter(edge =>
-            edge.source !== activeNodeId && edge.target !== activeNodeId
+            !nodesToDelete.includes(edge.source) && !nodesToDelete.includes(edge.target)
           ));
+
           setSelectedNodeId(null);
-          return null;
+          return undefined;
+        }
+
+        case 'move_node': {
+          // 노드를 다른 부모로 이동 (하위 트리 포함)
+          const sourceNodeLabel = command.params?.sourceNodeLabel;
+          const targetParentLabel = command.params?.targetParentLabel;
+
+          if (!sourceNodeLabel || !targetParentLabel) {
+            alert('이동할 노드와 목표 부모 노드 이름이 필요합니다.');
+            return undefined;
+          }
+
+          const latestNodes = nodesRef.current;
+          const latestEdges = edges;
+
+          // 소스 노드와 타겟 부모 노드 찾기
+          const sourceNode = latestNodes.find(n =>
+            n.data.label.toLowerCase().includes(sourceNodeLabel.toLowerCase())
+          );
+          const targetParentNode = latestNodes.find(n =>
+            n.data.label.toLowerCase().includes(targetParentLabel.toLowerCase())
+          );
+
+          if (!sourceNode) {
+            alert(`"${sourceNodeLabel}" 노드를 찾을 수 없습니다.`);
+            return undefined;
+          }
+
+          if (!targetParentNode) {
+            alert(`"${targetParentLabel}" 노드를 찾을 수 없습니다.`);
+            return undefined;
+          }
+
+          if (sourceNode.data.type === 'root') {
+            alert('루트 노드는 이동할 수 없습니다.');
+            return undefined;
+          }
+
+          // 순환 참조 방지: 타겟이 소스의 하위 노드인지 확인
+          const collectDescendantIds = (nodeId: string): string[] => {
+            const childIds = latestEdges
+              .filter(e => e.source === nodeId)
+              .map(e => e.target);
+
+            const allDescendants = [...childIds];
+            childIds.forEach(childId => {
+              allDescendants.push(...collectDescendantIds(childId));
+            });
+
+            return allDescendants;
+          };
+
+          const descendantIds = collectDescendantIds(sourceNode.id);
+          if (descendantIds.includes(targetParentNode.id)) {
+            alert('노드를 자신의 하위 노드로 이동할 수 없습니다.');
+            return undefined;
+          }
+
+          saveToHistory();
+
+          // 기존 부모-자식 엣지 제거
+          const oldEdge = latestEdges.find(e => e.target === sourceNode.id);
+          if (oldEdge) {
+            setEdges(eds => eds.filter(e => e.id !== oldEdge.id));
+          }
+
+          // 새 부모-자식 엣지 생성
+          const newEdge: Edge = {
+            id: `${targetParentNode.id}-${sourceNode.id}`,
+            source: targetParentNode.id,
+            target: sourceNode.id,
+            ...getEdgeStyle(targetParentNode.data.color)
+          };
+
+          setEdges(eds => [...eds, newEdge]);
+
+          console.log(`노드 이동 완료: "${sourceNode.data.label}" → "${targetParentNode.data.label}"`);
+          return activeNodeId || undefined;
+        }
+
+        case 'merge_nodes': {
+          // 두 노드를 병합 (첫 번째 노드에 두 번째 노드의 내용과 자식들 병합)
+          const node1Label = command.params?.node1Label;
+          const node2Label = command.params?.node2Label;
+
+          if (!node1Label || !node2Label) {
+            alert('병합할 두 노드의 이름이 필요합니다.');
+            return undefined;
+          }
+
+          const latestNodes = nodesRef.current;
+          const latestEdges = edges;
+
+          // 두 노드 찾기
+          const node1 = latestNodes.find(n =>
+            n.data.label.toLowerCase().includes(node1Label.toLowerCase())
+          );
+          const node2 = latestNodes.find(n =>
+            n.data.label.toLowerCase().includes(node2Label.toLowerCase())
+          );
+
+          if (!node1) {
+            alert(`"${node1Label}" 노드를 찾을 수 없습니다.`);
+            return undefined;
+          }
+
+          if (!node2) {
+            alert(`"${node2Label}" 노드를 찾을 수 없습니다.`);
+            return undefined;
+          }
+
+          if (node1.data.type === 'root' || node2.data.type === 'root') {
+            alert('루트 노드는 병합할 수 없습니다.');
+            return undefined;
+          }
+
+          if (node1.id === node2.id) {
+            alert('같은 노드를 병합할 수 없습니다.');
+            return undefined;
+          }
+
+          saveToHistory();
+
+          // node2의 자식들을 node1로 이동
+          const node2ChildEdges = latestEdges.filter(e => e.source === node2.id);
+
+          setEdges(eds => {
+            // node2의 자식 엣지들을 node1으로 변경
+            const updatedEdges = eds.map(edge => {
+              if (edge.source === node2.id) {
+                return {
+                  ...edge,
+                  id: `${node1.id}-${edge.target}`,
+                  source: node1.id,
+                  ...getEdgeStyle(node1.data.color)
+                };
+              }
+              return edge;
+            });
+
+            // node2와 관련된 부모 엣지 제거
+            return updatedEdges.filter(e => e.target !== node2.id);
+          });
+
+          // node1의 설명에 node2 설명 추가
+          setNodes(nds => {
+            const updatedNodes = nds.map(n => {
+              if (n.id === node1.id && node2.data.description) {
+                const combinedDescription = n.data.description
+                  ? `${n.data.description} / ${node2.data.description}`
+                  : node2.data.description;
+                return {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    description: combinedDescription
+                  }
+                };
+              }
+              return n;
+            });
+
+            // node2 제거
+            return updatedNodes.filter(n => n.id !== node2.id);
+          });
+
+          console.log(`노드 병합 완료: "${node2.data.label}" → "${node1.data.label}"`);
+          setSelectedNodeId(node1.id);
+          return node1.id;
+        }
+
+        case 'smart_expand': {
+          // AI가 노드 내용을 분석하여 상세한 하위 노드 자동 생성 (웹검색 포함)
+          if (!activeNodeId) {
+            alert('노드를 선택해주세요.');
+            return undefined;
+          }
+
+          const latestNodes = nodesRef.current;
+          const selectedNode = latestNodes.find(n => n.id === activeNodeId);
+
+          if (!selectedNode) {
+            alert('선택된 노드를 찾을 수 없습니다.');
+            return undefined;
+          }
+
+          const apiKey = getApiKey();
+          const perplexityApiKey = getPerplexityApiKey();
+          const useWebSearch = command.params?.useWebSearch || false;
+
+          if (!apiKey) {
+            alert('API 키가 설정되지 않았습니다.');
+            return undefined;
+          }
+
+          if (useWebSearch && !perplexityApiKey) {
+            alert('Perplexity API 키가 필요합니다.');
+            return undefined;
+          }
+
+          try {
+            saveToHistory();
+
+            // AI에게 스마트 확장 요청
+            const response = await fetch('/api/mindmap/smart-expand', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                node: {
+                  label: selectedNode.data.label,
+                  description: selectedNode.data.description
+                },
+                useWebSearch,
+                apiKey,
+                perplexityApiKey
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error('스마트 확장 API 오류');
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+              throw new Error(data.error || '스마트 확장 실패');
+            }
+
+            // 생성된 노드들 추가
+            const newNodes: Node[] = [];
+            const newEdges: Edge[] = [];
+
+            data.expandedNodes.forEach((nodeData: any, index: number) => {
+              const newNodeId = `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`;
+              const position = findNonOverlappingPosition(
+                {
+                  x: selectedNode.position.x + 300,
+                  y: selectedNode.position.y + (index - data.expandedNodes.length / 2) * 100
+                },
+                latestNodes,
+                index,
+                data.expandedNodes.length
+              );
+
+              const newNode: Node = {
+                id: newNodeId,
+                type: 'mindmapNode',
+                position,
+                data: {
+                  label: nodeData.label,
+                  description: nodeData.description || '',
+                  color: nodeData.color || 'gray',
+                  type: 'node'
+                }
+              };
+
+              newNodes.push(newNode);
+
+              const newEdge: Edge = {
+                id: `${activeNodeId}-${newNodeId}`,
+                source: activeNodeId,
+                target: newNodeId,
+                ...getEdgeStyle(selectedNode.data.color)
+              };
+
+              newEdges.push(newEdge);
+            });
+
+            await new Promise<void>((resolve) => {
+              setNodes((nds) => {
+                const updated = [...nds, ...newNodes];
+                setTimeout(() => resolve(), 0);
+                return updated;
+              });
+            });
+
+            setEdges((eds) => [...eds, ...newEdges]);
+
+            console.log(`스마트 확장 완료: ${newNodes.length}개 노드 생성`);
+            return activeNodeId || undefined;
+          } catch (error) {
+            console.error('스마트 확장 오류:', error);
+            alert('스마트 확장 중 오류가 발생했습니다.');
+            return undefined;
+          }
+        }
+
+        case 'reorder_nodes': {
+          // 형제 노드들의 순서 변경
+          const parentLabel = command.params?.parentLabel;
+          const order = command.params?.order; // 'priority' | 'alphabetical' | 'custom'
+          const customOrder = command.params?.customOrder; // ['노드1', '노드2', ...]
+
+          if (!parentLabel) {
+            alert('부모 노드 이름이 필요합니다.');
+            return undefined;
+          }
+
+          const latestNodes = nodesRef.current;
+          const latestEdges = edges;
+
+          // 부모 노드 찾기
+          const parentNode = latestNodes.find(n =>
+            n.data.label.toLowerCase().includes(parentLabel.toLowerCase())
+          );
+
+          if (!parentNode) {
+            alert(`"${parentLabel}" 노드를 찾을 수 없습니다.`);
+            return undefined;
+          }
+
+          // 자식 노드들 찾기
+          const childEdges = latestEdges.filter(e => e.source === parentNode.id);
+          const childNodes = childEdges
+            .map(e => latestNodes.find(n => n.id === e.target))
+            .filter(Boolean) as Node[];
+
+          if (childNodes.length === 0) {
+            alert('자식 노드가 없습니다.');
+            return undefined;
+          }
+
+          saveToHistory();
+
+          // 정렬 로직
+          let sortedChildren = [...childNodes];
+
+          if (order === 'alphabetical') {
+            sortedChildren.sort((a, b) => a.data.label.localeCompare(b.data.label, 'ko'));
+          } else if (order === 'custom' && customOrder) {
+            // 커스텀 순서대로 정렬
+            sortedChildren = customOrder
+              .map((label: string) =>
+                childNodes.find(n => n.data.label.toLowerCase().includes(label.toLowerCase()))
+              )
+              .filter(Boolean) as Node[];
+          }
+          // 'priority'는 AI가 중요도를 판단하여 customOrder로 전달
+
+          // 위치 재조정
+          setNodes(nds => {
+            return nds.map(node => {
+              const index = sortedChildren.findIndex(n => n.id === node.id);
+              if (index !== -1) {
+                return {
+                  ...node,
+                  position: {
+                    x: parentNode.position.x + 300,
+                    y: parentNode.position.y + (index - sortedChildren.length / 2) * 100
+                  }
+                };
+              }
+              return node;
+            });
+          });
+
+          console.log(`노드 재정렬 완료: ${sortedChildren.length}개 노드`);
+          return activeNodeId || undefined;
+        }
+
+        case 'bulk_operation': {
+          // 여러 노드에 대한 일괄 작업
+          const nodeLabels = command.params?.nodeLabels; // ['노드1', '노드2', ...]
+          const operation = command.params?.operation; // 'delete' | 'change_color' | 'move'
+          const operationParams = command.params?.operationParams; // operation별 추가 파라미터
+
+          if (!nodeLabels || !Array.isArray(nodeLabels) || nodeLabels.length === 0) {
+            alert('작업할 노드 목록이 필요합니다.');
+            return undefined;
+          }
+
+          if (!operation) {
+            alert('작업 유형이 필요합니다.');
+            return undefined;
+          }
+
+          const latestNodes = nodesRef.current;
+          const latestEdges = edges;
+
+          // 노드들 찾기
+          const targetNodes = nodeLabels
+            .map((label: string) =>
+              latestNodes.find(n =>
+                n.data.label.toLowerCase().includes(label.toLowerCase())
+              )
+            )
+            .filter(Boolean) as Node[];
+
+          if (targetNodes.length === 0) {
+            alert('일치하는 노드를 찾을 수 없습니다.');
+            return undefined;
+          }
+
+          // 루트 노드 포함 여부 확인
+          const hasRootNode = targetNodes.some(n => n.data.type === 'root');
+          if (hasRootNode && (operation === 'delete' || operation === 'move')) {
+            alert('루트 노드는 삭제하거나 이동할 수 없습니다.');
+            return undefined;
+          }
+
+          saveToHistory();
+
+          switch (operation) {
+            case 'delete': {
+              // 일괄 삭제
+              const collectDescendantIds = (nodeId: string): string[] => {
+                const childIds = latestEdges
+                  .filter(e => e.source === nodeId)
+                  .map(e => e.target);
+
+                const allDescendants = [...childIds];
+                childIds.forEach(childId => {
+                  allDescendants.push(...collectDescendantIds(childId));
+                });
+
+                return allDescendants;
+              };
+
+              const allNodesToDelete = targetNodes.flatMap(node => [
+                node.id,
+                ...collectDescendantIds(node.id)
+              ]);
+
+              setNodes(nds => nds.filter(node => !allNodesToDelete.includes(node.id)));
+              setEdges(eds => eds.filter(edge =>
+                !allNodesToDelete.includes(edge.source) && !allNodesToDelete.includes(edge.target)
+              ));
+
+              console.log(`일괄 삭제 완료: ${allNodesToDelete.length}개 노드`);
+              break;
+            }
+
+            case 'change_color': {
+              // 일괄 색상 변경
+              const newColor = operationParams?.color || 'gray';
+              const targetNodeIds = targetNodes.map(n => n.id);
+
+              setNodes(nds => nds.map(node => {
+                if (targetNodeIds.includes(node.id)) {
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      color: newColor
+                    }
+                  };
+                }
+                return node;
+              }));
+
+              console.log(`일괄 색상 변경 완료: ${targetNodes.length}개 노드 → ${newColor}`);
+              break;
+            }
+
+            case 'move': {
+              // 일괄 이동
+              const targetParentLabel = operationParams?.targetParentLabel;
+              if (!targetParentLabel) {
+                alert('목표 부모 노드가 필요합니다.');
+                return undefined;
+              }
+
+              const targetParent = latestNodes.find(n =>
+                n.data.label.toLowerCase().includes(targetParentLabel.toLowerCase())
+              );
+
+              if (!targetParent) {
+                alert(`"${targetParentLabel}" 노드를 찾을 수 없습니다.`);
+                return undefined;
+              }
+
+              // 기존 부모 엣지 제거
+              const targetNodeIds = targetNodes.map(n => n.id);
+              setEdges(eds => eds.filter(e => !targetNodeIds.includes(e.target)));
+
+              // 새 엣지 생성
+              const newEdges = targetNodes.map((node, index) => ({
+                id: `${targetParent.id}-${node.id}`,
+                source: targetParent.id,
+                target: node.id,
+                ...getEdgeStyle(targetParent.data.color)
+              }));
+
+              setEdges(eds => [...eds, ...newEdges]);
+
+              console.log(`일괄 이동 완료: ${targetNodes.length}개 노드 → "${targetParent.data.label}"`);
+              break;
+            }
+
+            default:
+              alert(`알 수 없는 작업 유형: ${operation}`);
+              return undefined;
+          }
+
+          return activeNodeId || undefined;
         }
 
         default:
           console.warn('알 수 없는 명령어:', command.action);
-          return activeNodeId;
+          return activeNodeId || undefined;
       }
     } catch (error) {
       console.error('명령어 처리 오류:', error);
       alert('명령어 실행 중 오류가 발생했습니다.');
-      return null;
+      return undefined;
     }
   }, [selectedNodeId, nodes, setNodes, setEdges, saveToHistory, findNonOverlappingPosition, getEdgeStyle, expandWithAI, reactFlowInstance]);
 
@@ -2032,15 +2644,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
                         {(() => {
                           const node = nodes.find(n => n.id === selectedNodeId);
                           const getIcon = () => {
-                            switch (node?.data.type) {
-                              case 'root': return <Target className="w-4 h-4" />;
-                              case 'idea': return <Lightbulb className="w-4 h-4" />;
-                              case 'feature': return <Sparkles className="w-4 h-4" />;
-                              case 'problem': return <FileText className="w-4 h-4" />;
-                              case 'solution': return <Wrench className="w-4 h-4" />;
-                              case 'detail': return <Settings className="w-4 h-4" />;
-                              default: return <Plus className="w-4 h-4" />;
-                            }
+                            return node?.data.type === 'root' ? <Target className="w-4 h-4" /> : <Lightbulb className="w-4 h-4" />;
                           };
                           return (
                             <>
