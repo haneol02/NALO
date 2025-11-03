@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 
-export const runtime = 'edge';
+// Edge Runtime 제거 - Node.js Runtime 사용 (Vercel 안정성)
+// export const runtime = 'edge';
 
 interface Message {
   id: string;
@@ -505,6 +506,9 @@ ${contextInfo}
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           'Connection': 'keep-alive',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
         },
       });
     }
@@ -521,37 +525,44 @@ ${contextInfo}
         messages,
         temperature: 0.7,
         max_tokens: 1000,
-        stream: true,
+        stream: true, // 스트리밍 활성화
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`${usePerplexityModel ? 'Perplexity' : 'OpenAI'} API 오류: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      console.error('OpenAI API 오류:', errorData);
+      throw new Error(`OpenAI API 오류: ${response.status} - ${JSON.stringify(errorData)}`);
     }
 
-    // 스트리밍 응답 생성
+    // ReadableStream으로 직접 반환 (Vercel 최적화)
     const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
     const stream = new ReadableStream({
       async start(controller) {
         const reader = response.body?.getReader();
-        // @ts-ignore - TextDecoder stream 옵션은 런타임에서 지원됨
-        const decoder = new TextDecoder('utf-8', { stream: true });
-
         if (!reader) {
           controller.close();
           return;
         }
 
         try {
+          let buffer = ''; // 불완전한 UTF-8 문자를 위한 버퍼
           let accumulatedContent = '';
 
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            // @ts-ignore - TextDecoder stream 옵션은 런타임에서 지원됨
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+            // 버퍼에 새 데이터 추가
+            buffer += decoder.decode(value, { stream: true });
+
+            // 줄 단위로 처리
+            const lines = buffer.split('\n');
+
+            // 마지막 줄은 불완전할 수 있으므로 버퍼에 보관
+            buffer = lines.pop() || '';
 
             for (const line of lines) {
               if (line.startsWith('data: ')) {
@@ -565,14 +576,13 @@ ${contextInfo}
                   if (content) {
                     accumulatedContent += content;
 
-                    // 컨텐츠 스트리밍
+                    // 컨텐츠 스트리밍 전송
                     controller.enqueue(
                       encoder.encode(`data: ${JSON.stringify({ type: 'content', content })}\n\n`)
                     );
 
-                    // 명령어 감지 ([COMMAND]로 시작)
+                    // 명령어 감지
                     if (accumulatedContent.includes('[COMMAND]')) {
-                      // JSON 완성 확인: 중괄호 개수 맞는지 체크
                       const commandStart = accumulatedContent.indexOf('[COMMAND]');
                       const jsonPart = accumulatedContent.substring(commandStart + 9).trim();
 
@@ -588,11 +598,10 @@ ${contextInfo}
                         }
                       }
 
-                      // JSON이 완성되었을 때만 파싱 시도
+                      // JSON 완성 시 파싱
                       if (jsonEnd > 0) {
                         const commandJson = jsonPart.substring(0, jsonEnd + 1).trim();
                         try {
-                          console.log('명령어 JSON 추출:', commandJson);
                           const command = JSON.parse(commandJson);
                           console.log('명령어 파싱 성공:', command);
 
@@ -601,10 +610,10 @@ ${contextInfo}
                             encoder.encode(`data: ${JSON.stringify({ type: 'command', command })}\n\n`)
                           );
 
-                          // 명령어 부분은 응답에서 제거
+                          // 명령어 부분 제거
                           accumulatedContent = accumulatedContent.replace(/\[COMMAND\][\s\S]*$/, '').trim();
                         } catch (e) {
-                          console.error('명령어 JSON 파싱 오류:', e);
+                          console.error('명령어 파싱 오류:', e);
                         }
                       }
                     }
@@ -614,6 +623,11 @@ ${contextInfo}
                 }
               }
             }
+          }
+
+          // 남은 버퍼 처리
+          if (buffer.trim()) {
+            buffer += decoder.decode(new Uint8Array(), { stream: false });
           }
 
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
@@ -630,6 +644,9 @@ ${contextInfo}
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
       },
     });
   } catch (error) {
@@ -638,7 +655,25 @@ ${contextInfo}
       JSON.stringify({
         error: error instanceof Error ? error.message : '알 수 없는 오류'
       }),
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        }
+      }
     );
   }
+}
+
+// OPTIONS 요청 처리 (CORS preflight)
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }
