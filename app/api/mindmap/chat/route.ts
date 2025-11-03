@@ -510,7 +510,8 @@ ${contextInfo}
     const stream = new ReadableStream({
       async start(controller) {
         const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
+        // @ts-ignore - TextDecoder stream 옵션은 런타임에서 지원됨
+        const decoder = new TextDecoder('utf-8', { stream: true });
 
         if (!reader) {
           controller.close();
@@ -524,7 +525,8 @@ ${contextInfo}
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
+            // @ts-ignore - TextDecoder stream 옵션은 런타임에서 지원됨
+            const chunk = decoder.decode(value, { stream: true });
             const lines = chunk.split('\n');
 
             for (const line of lines) {
