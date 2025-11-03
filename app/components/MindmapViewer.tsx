@@ -2140,7 +2140,7 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
             if (!node) return [];
 
             const indent = '  '.repeat(depth);
-            const colorEmoji = {
+            const colorEmojiMap: Record<string, string> = {
               gray: '⚪',
               red: '🔴',
               orange: '🟠',
@@ -2149,7 +2149,8 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
               blue: '🔵',
               purple: '🟣',
               pink: '🩷'
-            }[node.data.color || 'gray'] || '⚪';
+            };
+            const colorEmoji = colorEmojiMap[node.data.color || 'gray'] || '⚪';
 
             const lines: string[] = [
               `${indent}${colorEmoji} ${node.data.label}${node.data.description ? ` - ${node.data.description}` : ''}`
