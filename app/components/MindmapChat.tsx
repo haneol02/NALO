@@ -220,6 +220,10 @@ export default function MindmapChat({ isOpen, onClose, onCommand, selectedNodeId
       ));
     } finally {
       setIsStreaming(false);
+      // 응답 완료 후 입력창에 포커스
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   };
 

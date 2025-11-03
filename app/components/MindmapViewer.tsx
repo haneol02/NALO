@@ -2058,6 +2058,126 @@ const MindmapViewer: React.FC<MindmapViewerProps> = ({
           return activeNodeId || undefined;
         }
 
+        case 'delete_children': {
+          // 특정 노드의 하위 노드만 모두 제거
+          const nodeLabel = command.params?.nodeLabel;
+
+          // nodeLabel이 있으면 해당 노드 찾기, 없으면 현재 선택된 노드 사용
+          let targetNodeId = activeNodeId;
+
+          if (nodeLabel) {
+            const targetNode = nodesRef.current.find(n =>
+              n.data.label.toLowerCase().includes(nodeLabel.toLowerCase())
+            );
+
+            if (!targetNode) {
+              alert(`"${nodeLabel}" 노드를 찾을 수 없습니다.`);
+              return undefined;
+            }
+
+            targetNodeId = targetNode.id;
+          }
+
+          if (!targetNodeId) {
+            alert('노드를 선택해주세요.');
+            return undefined;
+          }
+
+          const latestEdges = edges;
+
+          // 직접 자식 노드들만 찾기
+          const childIds = latestEdges
+            .filter(e => e.source === targetNodeId)
+            .map(e => e.target);
+
+          if (childIds.length === 0) {
+            alert('삭제할 하위 노드가 없습니다.');
+            return undefined;
+          }
+
+          // 재귀적으로 모든 하위 노드 수집
+          const collectDescendantIds = (nodeId: string): string[] => {
+            const directChildIds = latestEdges
+              .filter(e => e.source === nodeId)
+              .map(e => e.target);
+
+            const allDescendants = [...directChildIds];
+            directChildIds.forEach(childId => {
+              allDescendants.push(...collectDescendantIds(childId));
+            });
+
+            return allDescendants;
+          };
+
+          const allDescendantIds = childIds.flatMap(id => [id, ...collectDescendantIds(id)]);
+
+          saveToHistory();
+
+          // 노드 및 엣지 삭제
+          setNodes(nds => nds.filter(n => !allDescendantIds.includes(n.id)));
+          setEdges(eds => eds.filter(e =>
+            !allDescendantIds.includes(e.source) && !allDescendantIds.includes(e.target)
+          ));
+
+          alert(`${childIds.length}개의 하위 노드가 삭제되었습니다.`);
+          return targetNodeId;
+        }
+
+        case 'list_nodes': {
+          // 전체 노드 목록 조회 (트리 구조로)
+          const latestNodes = nodesRef.current;
+          const latestEdges = edges;
+
+          const rootNode = latestNodes.find(n => n.data.type === 'root');
+          if (!rootNode) {
+            alert('루트 노드를 찾을 수 없습니다.');
+            return undefined;
+          }
+
+          // 재귀적으로 트리 구조 생성
+          const buildTree = (nodeId: string, depth: number = 0): string[] => {
+            const node = latestNodes.find(n => n.id === nodeId);
+            if (!node) return [];
+
+            const indent = '  '.repeat(depth);
+            const colorEmoji = {
+              gray: '⚪',
+              red: '🔴',
+              orange: '🟠',
+              yellow: '🟡',
+              green: '🟢',
+              blue: '🔵',
+              purple: '🟣',
+              pink: '🩷'
+            }[node.data.color || 'gray'] || '⚪';
+
+            const lines: string[] = [
+              `${indent}${colorEmoji} ${node.data.label}${node.data.description ? ` - ${node.data.description}` : ''}`
+            ];
+
+            // 자식 노드 찾기
+            const childIds = latestEdges
+              .filter(e => e.source === nodeId)
+              .map(e => e.target);
+
+            childIds.forEach(childId => {
+              lines.push(...buildTree(childId, depth + 1));
+            });
+
+            return lines;
+          };
+
+          const treeText = buildTree(rootNode.id).join('\n');
+          const totalNodes = latestNodes.length;
+
+          console.log('=== 전체 노드 목록 ===');
+          console.log(treeText);
+          console.log(`\n총 ${totalNodes}개 노드`);
+
+          alert(`전체 노드 목록:\n\n${treeText}\n\n총 ${totalNodes}개 노드\n\n(자세한 내용은 콘솔을 확인하세요)`);
+          return activeNodeId || undefined;
+        }
+
         default:
           console.warn('알 수 없는 명령어:', command.action);
           return activeNodeId || undefined;
