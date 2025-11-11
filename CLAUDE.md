@@ -1,6 +1,7 @@
 # NALO 프로젝트 설정
 
 ## 프로젝트 개요
+<<<<<<< Updated upstream
 - **이름**: NALO (날로 먹는 아이디어 기획)
 - **슬로건**: "날로 먹는 아이디어 기획 - AI 리서치와 마인드맵으로 아이디어를 구체화하세요"
 - **목적**: AI 기반 아이디어 리서치 & 마인드맵 브레인스토밍 플랫폼
@@ -8,6 +9,15 @@
   - **주제 탐색 (리서치)**: Wikipedia, 학술논문(OpenAlex), Perplexity Web 리서치 기반 아이디어 생성
   - **브레인스토밍 (마인드맵)**: 시각적 마인드맵으로 아이디어를 구체화하고 확장
 - **타겟**: 개발자, 기획자, 창업자를 위한 완전 무료 서비스
+=======
+- **이름**: NALO (날로 먹는 프로젝트 기획)
+- **목적**: 사용자 API 키 기반, AI 브레인스토밍과 학술 리서치를 결합한 완전 무료 프로젝트 기획 플랫폼
+- **타겟**: 개발자, 기획자, 창업자를 위한 지속 가능한 무료 서비스
+- **핵심 차별점**:
+  - 사용자 API 키 방식으로 서버 비용 제로
+  - ReactFlow 기반 대화형 마인드맵 브레인스토밍
+  - Wikipedia + OpenAlex 학술 논문 데이터 기반 시장 검증
+>>>>>>> Stashed changes
 
 ## 기술 스택
 
@@ -16,32 +26,38 @@
 - **Language**: TypeScript 5.0+
 - **Styling**: Tailwind CSS 3.4
 - **Icons**: Lucide React
-- **UI**: Custom Components
+- **UI**: Custom Components + ReactFlow 11
 
 ### 백엔드
 - **API**: Next.js API Routes (서버리스)
 - **Database**: Supabase (PostgreSQL)
-- **AI**: OpenAI GPT-3.5-turbo
-- **Search**: DuckDuckGo Search API
+- **AI**: OpenAI GPT-4o-mini (사용자 API 키 방식)
+- **Search**: Duck-Duck-Scrape
+- **Research**: Wikipedia API, OpenAlex API, Perplexity API
 
 ### 라이브러리
 - **PDF 생성**: jspdf + html2canvas
 - **HTTP Client**: Built-in fetch
 - **Utils**: clsx, tailwind-merge
+- **마인드맵**: reactflow
+- **인증**: @supabase/auth-ui-react
 
 ## 개발 환경
 
 ### 필수 명령어
 - **개발 서버**: `npm run dev`
-- **빌드**: `npm run build`  
+- **빌드**: `npm run build`
 - **프로덕션 서버**: `npm run start`
 - **린트**: `npm run lint`
 
 ### 환경 변수
 ```env
-OPENAI_API_KEY=sk-your-api-key
+# Supabase 설정
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key (선택)
+
+# 참고: OpenAI API 키는 사용자가 UI에서 직접 입력
 ```
 
 ## 코딩 규칙
@@ -66,15 +82,38 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ### 파일 구조
 ```
 app/
-├── api/                 # API 라우트
-├── components/          # 재사용 컴포넌트
-├── hooks/              # 커스텀 훅
-├── lib/                # 유틸리티, 템플릿, 설정
-├── ideas/              # 아이디어 목록 페이지
-├── plan/[id]/          # 기획서 상세 페이지
-├── globals.css         # 글로벌 스타일
-├── layout.tsx          # 루트 레이아웃
-└── page.tsx           # 홈페이지
+├── api/                      # API 라우트
+│   ├── generate/             # 빠른 아이디어 생성
+│   ├── ideas/                # 기획서 CRUD
+│   │   └── [id]/plan/        # 기획서 생성
+│   ├── topics/               # 트렌드 키워드
+│   ├── extract-keywords/     # 키워드 추출
+│   ├── research/             # 통합 리서치
+│   │   ├── wikipedia/        # Wikipedia 검색
+│   │   └── openalex/         # OpenAlex 논문 검색
+│   └── mindmap/              # 마인드맵 관련
+│       ├── auto-setup/       # 자동 구조 생성
+│       ├── expand/           # 노드 확장
+│       └── to-plan/          # 기획서 변환
+├── components/               # 재사용 컴포넌트
+│   ├── IdeaGenerator.tsx     # 메인 입력 폼
+│   ├── MindmapViewer.tsx     # 마인드맵 뷰어
+│   ├── SimpleTopicExplorer.tsx # 주제 탐색
+│   ├── ResearchResults.tsx   # 리서치 결과
+│   ├── ResultDisplay.tsx     # 아이디어 결과
+│   ├── ApiKeyInput.tsx       # API 키 입력
+│   └── AuthButton.tsx        # 인증 버튼
+├── lib/                      # 유틸리티, 설정
+│   ├── supabase.ts           # Supabase 클라이언트
+│   ├── apiKeyStorage.ts      # API 키 관리
+│   ├── openai.ts             # OpenAI 유틸
+│   └── simple-topic-generator.ts # 주제 생성
+├── ideas/                    # 기획서 목록 페이지
+├── plan/[id]/                # 기획서 상세 페이지
+├── login/                    # 로그인 페이지
+├── globals.css               # 글로벌 스타일
+├── layout.tsx                # 루트 레이아웃
+└── page.tsx                  # 홈페이지
 ```
 
 ## API 설계
@@ -88,7 +127,7 @@ app/
   message?: string
 }
 
-// 실패 응답  
+// 실패 응답
 {
   success: false,
   error: string,
@@ -97,29 +136,46 @@ app/
 ```
 
 ### 주요 API 엔드포인트
-- `/api/generate` - 아이디어 생성
-- `/api/ideas` - 저장된 아이디어 조회/수정
-- `/api/ideas/[id]/plan` - 기획서 생성
-- `/api/topics` - 트렌드 키워드 조회
-- `/api/extract-keywords` - 키워드 추출
+- `/api/generate` - 빠른 아이디어 생성 (POST)
+- `/api/ideas` - 기획서 목록 조회/생성 (GET/POST)
+- `/api/ideas/[id]` - 기획서 상세 조회/수정 (GET/PATCH)
+- `/api/ideas/[id]/plan` - 아이디어 → 기획서 변환 (POST)
+- `/api/topics` - 트렌드 키워드 조회 (GET)
+- `/api/extract-keywords` - 키워드 추출 (POST)
+- `/api/research` - 통합 리서치 (POST)
+- `/api/research/wikipedia` - Wikipedia 검색 (POST)
+- `/api/research/openalex` - OpenAlex 논문 검색 (POST)
+- `/api/research/perplexity` - Perplexity 웹 검색 (POST)
+- `/api/mindmap/auto-setup` - 마인드맵 자동 구조 생성 (POST)
+- `/api/mindmap/expand` - 마인드맵 노드 확장 (POST)
+- `/api/mindmap/to-plan` - 마인드맵 → 기획서 변환 (POST)
 
 ## 데이터베이스
 
 ### 주요 테이블
 - **idea_plans**: 생성된 기획서 저장
-- **trends**: 트렌드 키워드 캐싱
-- **usage_logs**: API 사용량 추적
+  - id (UUID, PK)
+  - user_id (UUID, FK to auth.users)
+  - title (VARCHAR 500)
+  - original_prompt (TEXT)
+  - keywords (TEXT[])
+  - plan_data (JSONB)
+  - created_at, updated_at (TIMESTAMPTZ)
 
 ### 명명 규칙
 - 테이블명: snake_case
 - 컬럼명: snake_case
-- Primary Key: id (SERIAL)
-- Timestamp: created_at, updated_at
+- Primary Key: id (UUID)
+- Timestamp: created_at, updated_at (TIMESTAMPTZ)
+
+### RLS (Row Level Security)
+- 사용자는 자신의 기획서만 조회 가능
+- 비로그인 사용자도 기획서 생성 가능 (user_id NULL)
 
 ## UI/UX 가이드라인
 
 ### 디자인 시스템
-- **색상**: Blue 계열 (blue-600, blue-50 등)
+- **색상**: Blue/Purple 계열 (blue-600, purple-500 등)
 - **폰트**: 시스템 폰트 스택
 - **간격**: Tailwind spacing (p-4, m-6 등)
 - **그림자**: shadow-lg, shadow-xl 사용
@@ -150,14 +206,14 @@ app/
 ## 보안 및 모범 사례
 
 ### API 보안
-- 환경 변수로 민감 정보 관리
-- Rate limiting 구현 (토큰 사용량 제한)
+- 사용자 API 키는 LocalStorage에 저장 (서버 전송 시만 사용)
+- Supabase RLS로 데이터 접근 제어
 - 입력값 검증 및 sanitization
 
 ### 코드 품질
 - **린트 규칙** 준수
 - **타입 안전성** 보장
-- **에러 바운더리** 적용
+- **에러 바운더리** 적용 (ErrorBoundary.tsx)
 - **로깅** 시스템 활용
 
 ## 배포 및 운영
@@ -169,10 +225,21 @@ app/
 
 ### 모니터링
 - Vercel Analytics
-- OpenAI API 사용량 추적
-- 에러 로깅 및 알림
+- Supabase Dashboard
+- 사용자 API 키 사용량은 사용자가 직접 모니터링
 
 ## 자주 사용하는 패턴
+
+### 사용자 API 키 가져오기
+```typescript
+import { getApiKey } from '@/app/lib/apiKeyStorage';
+
+const apiKey = getApiKey();
+if (!apiKey) {
+  setError('API 키가 설정되지 않았습니다.');
+  return;
+}
+```
 
 ### 데이터 fetching
 ```typescript
@@ -181,7 +248,14 @@ const [loading, setLoading] = useState(true);
 
 const fetchData = async () => {
   try {
-    const response = await fetch('/api/endpoint');
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error('API 키 필요');
+
+    const response = await fetch('/api/endpoint', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey, ...params })
+    });
     const result = await response.json();
     if (result.success) {
       setData(result.data);
@@ -200,7 +274,7 @@ const [currentPage, setCurrentPage] = useState(1);
 const itemsPerPage = 6;
 const totalPages = Math.ceil(items.length / itemsPerPage);
 const currentItems = items.slice(
-  (currentPage - 1) * itemsPerPage, 
+  (currentPage - 1) * itemsPerPage,
   currentPage * itemsPerPage
 );
 ```
@@ -208,7 +282,9 @@ const currentItems = items.slice(
 ### 한국어 날짜 포맷
 ```typescript
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('ko-KR');
+  return new Date(dateString).toLocaleDateString('ko-KR', {
+    timeZone: 'Asia/Seoul'
+  });
 };
 ```
 
@@ -219,3 +295,25 @@ const formatDate = (dateString: string) => {
 - **API 응답 형식** 일관성 유지
 - **에러 처리** 사용자 친화적으로
 - **로딩 상태** 모든 비동기 작업에 적용
+- **사용자 API 키** 서버에 저장하지 않음 (요청 시에만 전달)
+
+## 핵심 워크플로우
+
+### 1. 주제 탐색 모드
+1. 사용자 입력 → `/api/extract-keywords` (키워드 추출)
+2. 키워드 확장 → SimpleTopicExplorer (주제 선택)
+3. 리서치 선택 → `/api/research` (Wikipedia + OpenAlex + Perplexity)
+4. 아이디어 생성 → `/api/ideas` (POST)
+
+### 2. 브레인스토밍 모드
+1. 사용자 입력 → `/api/mindmap/auto-setup` (구조 생성)
+2. 마인드맵 표시 → MindmapViewer
+3. 노드 확장 → `/api/mindmap/expand` (대화형)
+4. 기획서 변환 → `/api/mindmap/to-plan`
+
+### 3. 기획서 생성
+1. 아이디어 선택 → `/api/ideas/[id]/plan` (상세 기획서 생성)
+2. Supabase 저장 → idea_plans 테이블
+3. PDF 생성 → jsPDF + html2canvas
+
+**참고**: `/api/generate` (빠른 생성 모드)는 현재 비활성화 상태
