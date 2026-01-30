@@ -148,7 +148,6 @@ NALO/
 ## 🎯 주요 기능
 
 ### 1. 실시간 트렌드 모니터링
-- DuckDuckGo Search API를 통한 글로벌 이슈 수집
 - 카테고리별 트렌드 키워드 분류
 - 한국어 최적화된 검색 결과
 
@@ -192,48 +191,3 @@ NALO/
 npx vercel --prod
 ```
 
-## 📈 개발 로드맵
-
-### Phase 1: MVP (4주)
-- [x] 기본 UI/UX 구현
-- [x] 트렌드 수집 시스템
-- [x] AI 아이디어 생성
-- [ ] 베타 테스트 및 버그 수정
-
-### Phase 2: 최적화 (4주)
-- [ ] 성능 최적화
-- [ ] 모바일 반응형 완성
-- [ ] 사용자 피드백 시스템
-- [ ] SEO 최적화
-
-### Phase 3: 확장 (8주)
-- [ ] 커뮤니티 기능
-- [ ] 성공 사례 큐레이션
-- [ ] API 오픈
-- [ ] 글로벌 서비스 확장
-
-## 🤝 기여하기
-
-NALO는 오픈소스 프로젝트입니다! 기여를 환영합니다.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 라이선스
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 💬 지원 및 문의
-
-- **Issues**: [GitHub Issues](https://github.com/your-username/nalo/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/nalo/discussions)
-- **Email**: hello@nalo.dev
-
----
-
-**NALO(날로)**: 어렵게 생각하지 말고, 일단 시작해보세요! 🚀
-
-*Made with ❤️ in Korea*
